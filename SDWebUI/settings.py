@@ -9,12 +9,17 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'web.apps.WebConfig',
 ]
 
 MIDDLEWARE = [
@@ -32,7 +37,7 @@ ROOT_URLCONF = 'SDWebUI.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'web/templates']
+        'DIRS': []
         ,
         'APP_DIRS': True,
         'OPTIONS': {

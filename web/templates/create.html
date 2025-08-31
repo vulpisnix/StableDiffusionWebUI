@@ -1,0 +1,424 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}
+    Create
+{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/create.css' %}">
+{% endblock %}
+
+{% block body %}
+
+    <header class="topbar">
+        <div class="topbar-inner container">
+            <div class="brand">
+                <span>Stable Diffusion</span>
+                <span class="badge">by Philipp Schott</span>
+            </div>
+            <div class="grow"></div>
+            <button class="icon-btn" id="exportBtn" aria-label="Einstellungen exportieren">Export</button>
+        </div>
+    </header>
+
+    <main class="container" id="app">
+        <div class="grid">
+            <!-- LEFT: Controls -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Eingabe</div>
+                        <div class="card-sub">Prompt, Modelle & Parameter</div>
+                    </div>
+                    <button class="icon-btn secondary" id="resetBtn">Zurücksetzen</button>
+                </div>
+                <div class="card-body row">
+                    <div class="row">
+                        <label class="label" for="prompt">Prompt</label>
+                        <textarea id="prompt" class="textarea"
+                                  placeholder="z.B. ultra-detailed portrait of a cyberpunk cat, neon lights, 85mm"
+                                  spellcheck="false"></textarea>
+                        <div class="pills" id="promptPills">
+                            <span class="pill" data-insert="," data-text="dramatic lighting">dramatic lighting</span>
+                            <span class="pill" data-insert="," data-text="highly detailed">highly detailed</span>
+                            <span class="pill" data-insert="," data-text="8k uhd">8k uhd</span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <label class="label" for="neg">Negativer Prompt</label>
+                        <textarea id="neg" class="textarea" placeholder="z.B. lowres, blurry, extra limbs, watermark"
+                                  spellcheck="false"></textarea>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="row">
+                            <label class="label" for="model">Modell</label>
+                            <select id="model" class="select">
+                                {% for model in models %}
+                                    <option value="{{ model.id }}">{{ model.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row">
+                            <label class="label" for="sampler">Sampler</label>
+                            <select id="sampler" class="select">
+                                <option>Euler a</option>
+                                <option>DDIM</option>
+                                <option>DPM++ 2M</option>
+                                <option>UniPC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-3">
+                        <div class="row">
+                            <div class="label">Schritte <span id="stepsVal" class="card-sub"></span></div>
+                            <div class="range-wrap"><input id="steps" class="range" type="range" min="1" max="100"
+                                                           value="30"><span class="bubble" aria-hidden="true">30</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="label">CFG <span id="cfgVal" class="card-sub"></span></div>
+                            <div class="range-wrap"><input id="cfg" class="range" type="range" min="1" max="20"
+                                                           value="7"><span class="bubble" aria-hidden="true">7</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="label">Seed <span id="seedVal" class="card-sub"></span></div>
+                            <input id="seed" class="input" type="number" placeholder="-1 = zufällig" value="-1"/>
+                        </div>
+                    </div>
+
+                    <div class="grid-3">
+                        <div class="row">
+                            <label class="label">Breite</label>
+                            <input id="width" class="input" type="number" value="1024"/>
+                        </div>
+                        <div class="row">
+                            <label class="label">Höhe</label>
+                            <input id="height" class="input" type="number" value="1024"/>
+                        </div>
+                        <div class="row">
+                            <label class="label">Upscaler</label>
+                            <select id="upscaler" class="select">
+                                <option>Keiner</option>
+                                <option>4x-UltraSharp</option>
+                                <option>ESRGAN</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <details>
+                        <summary class="label" style="cursor:pointer">Erweitert</summary>
+                        <div class="row" style="margin-top:12px">
+                            <div class="grid-2">
+                                <label class="input" style="display:flex;align-items:center;gap:10px"><input
+                                        type="checkbox" id="tiling"> Tiling</label>
+                                <label class="input" style="display:flex;align-items:center;gap:10px"><input
+                                        type="checkbox" id="hiresfix" checked> Hires Fix</label>
+                            </div>
+                            <div class="grid-2">
+                                <div class="row">
+                                    <label class="label">Guidance (Refiner)</label>
+                                    <div class="range-wrap"><input id="refiner" class="range" type="range" min="0"
+                                                                   max="1" step="0.05" value="0.2"><span class="bubble">0.2</span>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <label class="label">ETA / Noise</label>
+                                    <div class="range-wrap"><input id="eta" class="range" type="range" min="0" max="1"
+                                                                   step="0.01" value="0.0"><span
+                                            class="bubble">0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="row">
+                        <div class="label">Bild-zu-Bild (optional)</div>
+                        <div class="dropzone" id="dropzone">
+                            <input type="file" id="file" accept="image/*" hidden/>
+                            <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
+                            <p class="card-sub">Stärke <span id="strengthValue">0.5</span></p>
+                            <div class="range-wrap" style="margin-top:8px;max-width:420px;margin-inline:auto"><input
+                                    id="strength" class="range" type="range" min="0" max="1" step="0.01"
+                                    value="0.5"><span class="bubble">0.50</span></div>
+                            <div id="preview" class="preview hidden" style="margin-top:12px"></div>
+                        </div>
+                    </div>
+
+                    <div class="toolbar">
+                        <button class="btn" id="generateBtn">⚡ Generieren (Ctrl+Enter)</button>
+                        <button class="btn secondary" id="queueBtn">➕ Zur Warteschlange</button>
+                        <button class="btn secondary" id="randomizeBtn">🎲 Seed zufällig</button>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Fortschritt<span id="progressLabel"></span></div>
+                        <div class="progress" aria-live="polite" aria-label="Fortschrittsanzeige"><span id="progressBar"></span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: Output -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Ergebnisse</div>
+                        <div class="card-sub">Galerie, Verlauf & Aktionen</div>
+                    </div>
+                    <div class="toolbar">
+                        <button class="icon-btn" id="saveAll">Alle speichern</button>
+                        <button class="icon-btn" id="clearGallery">Leeren</button>
+                    </div>
+                </div>
+                <div class="card-body row">
+                    <div id="gallery" class="gallery" aria-live="polite"></div>
+                    <div class="footer">
+                        <strong>Made with ♥️ by Philipp Schott</strong>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+
+    <script>
+        let socket = undefined;
+        const createWebSocket = () => {
+            socket = new WebSocket('ws://' + location.host + '/ws/create/');
+            socket.onopen = () => {
+                showToast('Connected!');
+            }
+            socket.onmessage = (e) => {
+                const payload = JSON.parse(e.data);
+                const event = payload.event;
+                const data = payload.data;
+
+                if (event === "creation-finished") addToGallery(data);
+                else if(event === "progress") {
+                    const steps = data["steps"];
+                    const step = data["step"];
+
+                    const pct = data["percent"];
+                    progressBar.style.width = pct + '%';
+
+                    progressLabel.innerText = ` (${step} / ${steps}) ETA: ${data["eta"]}`;
+
+                    if(pct === 100 || step >= steps) {
+                        generateBtn.disabled = false;
+                        generateBtn.textContent = '⚡ Generieren (Ctrl+Enter)';
+                        progressLabel.innerText = "";
+                        showToast('Fertig!');
+                    }
+
+                } else {
+                    console.log(event)
+                }
+            }
+            socket.onclose = () => {
+                showToast('Lost connection..');
+                setTimeout(createWebSocket, 500);
+            }
+        }
+        const sendSocketMessage = (event = '', json_data = {}) => {
+            if (socket === undefined) return;
+            socket.send(JSON.stringify({
+                'event': event,
+                'data': json_data
+            }));
+        }
+
+        createWebSocket();
+    </script>
+
+
+    <script>
+        // --- UI Helpers ---
+        function attachRange(id) {
+            const el = document.getElementById(id);
+            const bubble = el.parentElement.querySelector('.bubble');
+            const out = document.getElementById(id + 'Val');
+            const update = () => {
+                bubble.textContent = el.value;
+                if (out) out.textContent = '(' + el.value + ')';
+                positionBubble();
+            };
+            const positionBubble = () => {
+                const val = (el.value - el.min) / (el.max - el.min);
+                const offset = el.offsetWidth * val;
+                bubble.style.left = offset + 'px';
+            }
+            el.addEventListener('input', update);
+            window.addEventListener('resize', () => requestAnimationFrame(positionBubble));
+            update();
+        }
+
+        ['steps', 'cfg', 'refiner', 'eta', 'strength'].forEach(attachRange);
+
+        // --- Prompt Pills ---
+        document.getElementById('promptPills').addEventListener('click', (e) => {
+            const t = e.target.closest('.pill');
+            if (!t) return;
+            const insert = t.dataset.insert || ', ';
+            const text = t.dataset.text || t.textContent.trim();
+            const ta = document.getElementById('prompt');
+            ta.value = (ta.value ? ta.value + insert : '') + text;
+            ta.focus();
+        });
+
+        // --- Dropzone ---
+        const dz = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file');
+        const preview = document.getElementById('preview');
+        dz.addEventListener('click', () => fileInput.click());
+        dz.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dz.classList.add('dragover');
+        });
+        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+        dz.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dz.classList.remove('dragover');
+            const f = e.dataTransfer.files[0];
+            if (f) handleFile(f);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files[0];
+            if (f) handleFile(f);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.innerHTML = `<img src="${e.target.result}" alt="Vorlage"><div><div class="card-sub">${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB</div><div class="pills"><span class="pill" id="removeImg">Entfernen</span><span class="pill">Als Init-Image</span></div></div>`;
+                preview.classList.remove('hidden');
+                preview.querySelector('#removeImg').onclick = () => {
+                    preview.classList.add('hidden');
+                    preview.innerHTML = '';
+                    fileInput.value = '';
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Toast ---
+        const toast = document.getElementById('toast');
+
+        function showToast(msg, timeout = 2200) {
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', timeout);
+        }
+
+        // --- Buttons ---
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('prompt').value = '';
+            document.getElementById('neg').value = '';
+            document.getElementById('steps').value = 30;
+            document.getElementById('cfg').value = 7;
+            ['steps', 'cfg'].forEach(attachRange);
+            document.getElementById('seed').value = -1;
+            document.getElementById('width').value = 512;
+            document.getElementById('height').value = 512;
+            document.getElementById('upscaler').selectedIndex = 0;
+            document.getElementById('sampler').selectedIndex = 0;
+            document.getElementById('model').selectedIndex = 0;
+            showToast('Zurückgesetzt');
+        });
+
+        document.getElementById('randomizeBtn').addEventListener('click', () => {
+            const s = Math.floor(Math.random() * 1e9);
+            document.getElementById('seed').value = s;
+            showToast('Seed: ' + s);
+        });
+
+        // --- Keyboard Shortcut ---
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate();
+        });
+
+        const progressBar = document.getElementById('progressBar');
+        const progressLabel = document.getElementById('progressLabel');
+        const generateBtn = document.getElementById('generateBtn');
+        generateBtn.addEventListener('click', generate);
+        //document.getElementById('queueBtn').addEventListener('click', () => showToast('Zur Warteschlange hinzugefügt'));
+
+        async function generate() {
+            if (generateBtn.disabled) return;
+            // ToDo: Add to queue
+
+            generateBtn.disabled = true;
+            generateBtn.textContent = '⏳ Generiere...';
+
+            //ToDo: Generate Image
+            sendSocketMessage('create', {
+                'settings': collectPayload(),
+                'img2img': undefined
+            });
+        }
+
+        // --- Gallery ---
+        const gallery = document.getElementById('gallery');
+
+        const addToGallery = (base64Image) => {
+            const imageSrc = 'data:image/png;base64,' + base64Image;
+
+            const el = document.createElement('div');
+            el.className = 'thumb';
+            el.innerHTML = `
+                <img src="${imageSrc}" alt="Generiertes Bild" loading="lazy"/>
+                <div class="meta">
+                <span>${document.getElementById('model').value.toUpperCase()}</span>
+                <div class="toolbar">
+                    <button class="pill" title="Als Prompt übernehmen">📋</button>
+                    <button class="pill" title="Download">⬇️</button>
+                </div>
+                </div>`;
+            gallery.prepend(el);
+        }
+
+        document.getElementById('clearGallery').addEventListener('click', () => {
+            gallery.innerHTML = '';
+            showToast('Gallery cleared!');
+        });
+        document.getElementById('saveAll').addEventListener('click', () => showToast('Bitte im Backend implementieren: ZIP-Export'));
+
+        // --- Export Settings ---
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const payload = collectPayload();
+            const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sd-settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Settings exported!');
+        });
+
+        function collectPayload() {
+            return {
+                prompt: document.getElementById('prompt').value,
+                negative: document.getElementById('neg').value,
+                model: document.getElementById('model').value,
+                sampler: document.getElementById('sampler').value,
+                steps: Number(document.getElementById('steps').value),
+                cfg: Number(document.getElementById('cfg').value),
+                seed: Number(document.getElementById('seed').value),
+                width: Number(document.getElementById('width').value),
+                height: Number(document.getElementById('height').value),
+                upscaler: document.getElementById('upscaler').value,
+                tiling: document.getElementById('tiling').checked,
+                hiresfix: document.getElementById('hiresfix').checked,
+                refiner: Number(document.getElementById('refiner').value),
+                eta: Number(document.getElementById('eta').value),
+                strength: Number(document.getElementById('strength').value)
+            };
+        }
+    </script>
+{% endblock %}
