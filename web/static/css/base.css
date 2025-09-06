@@ -6,4 +6,7 @@ html, body {
     overflow-x: hidden;
 
     background: #444141;
+
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: #fff;
 }

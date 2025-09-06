@@ -4,3 +4,28 @@
 {% block title %}
 Landingpage
 {% endblock %}
+
+{% block head %}
+	<link rel="stylesheet" href="{% static 'css/landingpage.css' %}">
+{% endblock %}
+
+{% block body %}
+    <div id="navbar">
+
+    </div>
+
+	<h1>Landingpage</h1>
+
+    <div class="images">
+        {% for image in images %}
+        	<div class="card">
+                <img src="data:image/png;base64,{{ image.base64}}" alt="" loading="lazy" />
+                <div class="meta">
+                    <span>{{ image.model }} @ {{ image.width }}x{{ image.height }}</span>
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+
+{% endblock %}

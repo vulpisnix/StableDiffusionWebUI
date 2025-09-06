@@ -94,11 +94,11 @@
                     <div class="grid-3">
                         <div class="row">
                             <label class="label">Breite</label>
-                            <input id="width" class="input" type="number" value="1024"/>
+                            <input id="width" class="input" type="number" value="512"/>
                         </div>
                         <div class="row">
                             <label class="label">Höhe</label>
-                            <input id="height" class="input" type="number" value="1024"/>
+                            <input id="height" class="input" type="number" value="512"/>
                         </div>
                         <div class="row">
                             <label class="label">Upscaler</label>
@@ -152,7 +152,7 @@
                     <div class="toolbar">
                         <button class="btn" id="generateBtn">⚡ Generieren (Ctrl+Enter)</button>
                         <button class="btn secondary" id="queueBtn">➕ Zur Warteschlange</button>
-                        <button class="btn secondary" id="randomizeBtn">🎲 Seed zufällig</button>
+                        <button class="btn secondary" id="randomizeBtn">🎲 Zufälliger Seed</button>
                     </div>
 
                     <div class="row">
@@ -199,15 +199,19 @@
                 const event = payload.event;
                 const data = payload.data;
 
-                if (event === "creation-finished") addToGallery(data);
+                if (event === "creation-finished") {
+                    document.getElementById('generation-preview').remove();
+                    addToGallery(data);
+                }
                 else if(event === "progress") {
                     const steps = data["steps"];
                     const step = data["step"];
 
                     const pct = data["percent"];
                     progressBar.style.width = pct + '%';
-
                     progressLabel.innerText = ` (${step} / ${steps}) ETA: ${data["eta"]}`;
+
+                    previewGenerationState(data["img_state"]);
 
                     if(pct === 100 || step >= steps) {
                         generateBtn.disabled = false;
@@ -380,6 +384,24 @@
                 </div>
                 </div>`;
             gallery.prepend(el);
+        }
+
+        const previewGenerationState = (base64Image) => {
+            const imageSrc = 'data:image/png;base64,' + base64Image;
+
+            let el = document.getElementById('generation-preview');
+            if(el === null) {
+                el = document.createElement('div');
+                el.id = 'generation-preview';
+                el.className = 'thumb';
+                el.innerHTML = `
+                    <img src="${imageSrc}" alt="Generiertes Bild" loading="lazy"/>
+                `;
+            } else {
+                el.getElementsByTagName('img')[0].src = imageSrc;
+            }
+            if(!gallery.contains(el)) gallery.prepend(el);
+
         }
 
         document.getElementById('clearGallery').addEventListener('click', () => {

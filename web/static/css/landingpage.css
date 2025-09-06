@@ -1,0 +1,38 @@
+.images {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 20px;
+    width: calc(100% - 40px);
+}
+
+.card {
+    width: 512px;
+    height: 512px;
+    overflow: hidden;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.card img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.card .meta {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+
+    width: 100%;
+    height: 30px;
+
+    background: rgba(0,0,0,.8);
+
+    text-align: center;
+    line-height: 30px;
+}

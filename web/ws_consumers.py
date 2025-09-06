@@ -1,4 +1,5 @@
 import datetime
+import json
 import threading
 import time
 from base64 import b64encode
@@ -9,12 +10,13 @@ from time import sleep
 
 import torch
 import os
+
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 from diffusers import DiffusionPipeline
 
 from channels.generic.websocket import JsonWebsocketConsumer
 from SDWebUI.settings import BASE_DIR, MEDIA_ROOT
-
-import web.hgf_utility as hgf_utility
 
 queue = Queue()
 sdQueueThread = None
@@ -24,28 +26,14 @@ CURRENT_PROCESS = {
     'steps': 0,
     'step': 0,
     'percent': 0,
-    'timestep': 0
+    'timestep': 0,
+    'data': None
 }
 class WSConsumer_Create(JsonWebsocketConsumer):
     def connect(self):
         self.accept()
         print("WS connected")
         WS_Create.append(self)
-
-        '''
-        def file_progress(filename, percent):
-            print(f"[{filename}] {percent}%")
-
-        def global_progress(done, total, percent):
-            print(f"Gesamt: {done}/{total} Dateien ({percent}%)")
-
-        downloader = hgf_utility.PipelineDownloader("Qwen/Qwen-Image")
-
-        downloader.download_all(
-            callback_file=file_progress,
-            callback_global=global_progress
-        )
-        '''
 
     def disconnect(self, code):
         print('WS disconnected', f"Code: {code}")
@@ -61,7 +49,6 @@ class WSConsumer_Create(JsonWebsocketConsumer):
             if sdQueueThread is None:
                 sdQueueThread = SDQueueThread()
                 sdQueueThread.start()
-
 
 class SDQueueThread(threading.Thread):
     def __init__(self):
@@ -99,12 +86,28 @@ class SDQueueThread(threading.Thread):
                     remaining = (total_steps - steps_done) * avg_time
                     eta = time.strftime("%H:%M:%S", time.gmtime(remaining))
 
+                    with torch.no_grad():
+                        image_tensor = pipe.vae.decode(latents / 0.18215).sample
+                        if image_tensor.dtype in [torch.bfloat16, torch.float16]:
+                            image_tensor = image_tensor.to(torch.float32)
+                        image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
+                        im = image_tensor.cpu().permute(0, 2, 3, 1)[0].numpy()
+                        im = (im * 255).round().astype("uint8")
+
+                        img = Image.fromarray(im)
+                        buffered = BytesIO()
+                        img.save(buffered, format="PNG")
+                        buffered.seek(0)
+                        img_state = b64encode(buffered.getvalue()).decode(),
+
                     CURRENT_PROCESS = {
                         'steps': total_steps,
                         'step': step,
                         'percent': percent,
                         'timestep': f"{timestep}",
-                        "eta": eta
+                        'eta': eta,
+                        'data': data,
+                        'img_state': img_state
                     }
                     socket_payload_p = {
                         'event': 'progress',
@@ -118,11 +121,9 @@ class SDQueueThread(threading.Thread):
 
                 seed = settings["seed"] if settings["seed"] != -1 else random.randint(0, 2 ** 32 - 1)
 
-                print(f"Seed: {seed}")
-
                 image = pipe(
                     prompt=settings["prompt"],
-                    negative_prompt=settings["negative"] + " nsfw",
+                    negative_prompt="nsfw," + settings["negative"],
                     width=settings["width"],
                     height=settings["height"],
                     num_inference_steps=settings["steps"],
@@ -134,6 +135,11 @@ class SDQueueThread(threading.Thread):
 
                 file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S")+".png")
                 image.save(file_name, format="PNG")
+
+                targetImage = Image.open(file_name)
+                metadata = PngInfo()
+                metadata.add_text("SD_Data", json.dumps(data))
+                targetImage.save(file_name, format="PNG", pnginfo=metadata)
 
                 buffer = BytesIO()
                 image.save(buffer, format="PNG")
