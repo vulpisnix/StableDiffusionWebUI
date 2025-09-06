@@ -2,3 +2,4 @@
 /.venv/
 /web/migrations/
 /db.sqlite3
+/sd_model_cache/

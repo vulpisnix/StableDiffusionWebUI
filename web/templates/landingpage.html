@@ -1,0 +1,28 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}
+Gallery
+{% endblock %}
+
+{% block head %}
+	<link rel="stylesheet" href="{% static 'css/landingpage.css' %}">
+{% endblock %}
+
+{% block body %}
+	<h1>Stable Diffusion WebUI</h1>
+    <h3>by Philipp Schott</h3>
+
+    <div class="images">
+        {% for image in images %}
+        	<div class="card">
+                <img src="data:image/png;base64,{{ image.base64}}" alt="" loading="lazy" />
+                <div class="meta">
+                    <span>{{ image.model }} @ {{ image.width }}x{{ image.height }}</span>
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+
+{% endblock %}
