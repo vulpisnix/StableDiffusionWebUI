@@ -78,6 +78,24 @@ class SDQueueThread(threading.Thread):
                 settings = data["settings"]
                 img2img = data["img2img"] if 'img2img' in data else None
 
+                def check_nsfw(pipeline):
+                    nsfw_flag = False
+                    if hasattr(pipeline, "nsfw_content_detected"):
+                        nsfw_flag = any(pipeline.nsfw_content_detected)
+                    elif hasattr(pipeline, "has_nsfw_concept"):
+                        nsfw_flag = any(pipeline.has_nsfw_concept)
+                    if nsfw_flag:
+                        try:
+                            socket_payload = {
+                                'event': 'creation-failed',
+                                'data': 'Mögliche NSFW Inhalte wurden erkannt.'
+                            }
+                            for socket in WS_Create:
+                                socket.send_json(socket_payload)
+                        except Exception as e:
+                            print(e)
+                    return nsfw_flag
+
                 def progress_callback(step: int, timestep: int, latents):
                     total_steps = pipe.scheduler.num_inference_steps
                     elapsed = time.time() - start_time
@@ -164,6 +182,9 @@ class SDQueueThread(threading.Thread):
                 pipe = DiffusionPipeline.from_pretrained(settings["model"], torch_dtype=torch_dtype, cache_dir=os.path.join(BASE_DIR, 'sd_model_cache'))
                 pipe = pipe.to(device)
 
+                if settings['allow_nsfw']:
+                    pipe.safety_checker = None
+
                 match str(settings["sampler"]):
                     case "Euler a":
                         pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
@@ -183,7 +204,7 @@ class SDQueueThread(threading.Thread):
 
                 start_time = time.time()
 
-                image = pipe(
+                result = pipe(
                     prompt=settings["prompt"],
                     negative_prompt="nsfw," + settings["negative"],
                     width=settings["width"],
@@ -193,7 +214,9 @@ class SDQueueThread(threading.Thread):
                     generator=generator,
                     callback=progress_callback,
                     callback_steps=1
-                ).images[0]
+                )
+                image = result.images[0]
+                if check_nsfw(result): break
 
                 file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S")+".png")
                 image.save(file_name, format="PNG")
@@ -207,14 +230,17 @@ class SDQueueThread(threading.Thread):
                         ).to("cuda")
 
                         start_time = time.time()
-                        upscaled = upscaler(
+                        upscaled_result = upscaler(
                             prompt=settings["prompt"],
                             image=image,
                             #num_inference_steps=settings["steps"],
                             #generator=generator,
                             callback=progress_callback_upscaler,
                             callback_steps=1
-                        ).images[0]
+                        )
+
+                        upscaled = upscaled_result.images[0]
+                        if check_nsfw(upscaled_result): break
                         upscaled.save(file_name, format="PNG")
 
 

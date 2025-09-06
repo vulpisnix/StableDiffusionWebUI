@@ -144,7 +144,7 @@
 
                     <div class="toolbar">
                         <button class="btn" id="generateBtn">⚡ Generieren (Ctrl+Enter)</button>
-                        <button class="btn secondary" id="queueBtn">➕ Zur Warteschlange</button>
+                        <button class="btn secondary" id="queueBtn">➕ Warteschlange</button>
                         <button class="btn secondary" id="randomizeBtn">🎲 Zufälliger Seed</button>
                     </div>
 
@@ -185,7 +185,7 @@
         const createWebSocket = () => {
             socket = new WebSocket('ws://' + location.host + '/ws/create/');
             socket.onopen = () => {
-                showToast('Connected!');
+                showToast('Verbunden!');
             }
             socket.onmessage = (e) => {
                 const payload = JSON.parse(e.data);
@@ -234,7 +234,7 @@
                 }
             }
             socket.onclose = () => {
-                showToast('Lost connection..');
+                showToast('Verbindung verloren..');
                 setTimeout(createWebSocket, 500);
             }
         }
@@ -359,12 +359,19 @@
         const progressLabel = document.getElementById('progressLabel');
         const generateBtn = document.getElementById('generateBtn');
         generateBtn.addEventListener('click', generate);
-        //document.getElementById('queueBtn').addEventListener('click', () => showToast('Zur Warteschlange hinzugefügt'));
+        document.getElementById('queueBtn').addEventListener('click', () => {
+
+            //ToDo: Generate Image
+            sendSocketMessage('create', {
+                'settings': collectPayload(),
+                'img2img': undefined
+            });
+
+            showToast('Zur Warteschlange hinzugefügt');
+        });
 
         async function generate() {
             if (generateBtn.disabled) return;
-            // ToDo: Add to queue
-
             generateBtn.disabled = true;
             generateBtn.textContent = '⏳ Generiere...';
 
@@ -448,7 +455,8 @@
                 hiresfix: document.getElementById('hiresfix').checked,
                 refiner: Number(document.getElementById('refiner').value),
                 eta: Number(document.getElementById('eta').value),
-                strength: Number(document.getElementById('strength').value)
+                strength: Number(document.getElementById('strength').value),
+                allow_nsfw: false,
             };
         }
     </script>
