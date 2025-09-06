@@ -13,6 +13,19 @@
     {% block head %}{% endblock %}
 </head>
 <body>
-{% block body %}{% endblock %}
+    <header class="topbar">
+        <div class="topbar-inner container">
+            <div class="brand">
+                <a href="{% url 'index' %}"><span>Stable Diffusion WebUI</span></a>
+                <span class="badge">by Philipp Schott</span>
+            </div>
+            <div class="grow"></div>
+            {% block topbar_right %}
+            	<a href="{% url 'create_index' %}"><button class="icon-btn" aria-label="Bild Erstellen">Bild Erstellen</button></a>
+            {% endblock %}
+        </div>
+    </header>
+
+    {% block body %}{% endblock %}
 </body>
 </html>

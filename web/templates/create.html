@@ -9,18 +9,11 @@
     <link rel="stylesheet" href="{% static 'css/create.css' %}">
 {% endblock %}
 
-{% block body %}
+{% block topbar_right %}
+    <button class="icon-btn" id="exportBtn" aria-label="Einstellungen exportieren">Export</button>
+{% endblock %}
 
-    <header class="topbar">
-        <div class="topbar-inner container">
-            <div class="brand">
-                <span>Stable Diffusion</span>
-                <span class="badge">by Philipp Schott</span>
-            </div>
-            <div class="grow"></div>
-            <button class="icon-btn" id="exportBtn" aria-label="Einstellungen exportieren">Export</button>
-        </div>
-    </header>
+{% block body %}
 
     <main class="container" id="app">
         <div class="grid">
@@ -75,7 +68,7 @@
                     <div class="grid-3">
                         <div class="row">
                             <div class="label">Schritte <span id="stepsVal" class="card-sub"></span></div>
-                            <div class="range-wrap"><input id="steps" class="range" type="range" min="1" max="100"
+                            <div class="range-wrap"><input id="steps" class="range" type="range" min="1" max="120"
                                                            value="30"><span class="bubble" aria-hidden="true">30</span>
                             </div>
                         </div>
@@ -202,6 +195,10 @@
                 if (event === "creation-finished") {
                     document.getElementById('generation-preview').remove();
                     addToGallery(data);
+
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = '⚡ Generieren (Ctrl+Enter)';
+                    progressLabel.innerText = "";
                 }
                 else if(event === "progress") {
                     const steps = data["steps"];
@@ -213,13 +210,25 @@
 
                     previewGenerationState(data["img_state"]);
 
-                    if(pct === 100 || step >= steps) {
-                        generateBtn.disabled = false;
-                        generateBtn.textContent = '⚡ Generieren (Ctrl+Enter)';
-                        progressLabel.innerText = "";
-                        showToast('Fertig!');
+                    if(!generateBtn.disabled) {
+                        generateBtn.disabled = true;
+                        generateBtn.textContent = '⏳ Generiere...';
                     }
+                }
+                else if(event === "progress-upscaler") {
+                    const steps = data["steps"];
+                    const step = data["step"];
 
+                    const pct = data["percent"];
+                    progressBar.style.width = pct + '%';
+                    progressLabel.innerText = ` (${step} / ${steps}) ETA: ${data["eta"]} - Upscaling`;
+
+                    previewGenerationState(data["img_state"]);
+
+                    if(!generateBtn.disabled) {
+                        generateBtn.disabled = true;
+                        generateBtn.textContent = '⏳ Generiere...';
+                    }
                 } else {
                     console.log(event)
                 }
