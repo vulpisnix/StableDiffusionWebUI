@@ -3,9 +3,10 @@ import json
 import threading
 import time
 import random
+
 import torch
 import os
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from io import BytesIO
 from queue import Queue, Empty
 from PIL import Image
@@ -59,213 +60,267 @@ class SDQueueThread(threading.Thread):
         self.name = "SDQueueThread"
         self.do_run = True
 
-    def run(self):
-        global queue, CURRENT_PROCESS
+        self.data = None
+        self.start_time = 0
+        self.current_pipe = None
+        self.current_upscaler = None
 
-        start_time = -1
+        if torch.cuda.is_available():
+            self.torch_dtype = torch.bfloat16
+            self.device = "cuda"
+        else:
+            self.torch_dtype = torch.float32
+            self.device = "cpu"
 
-        while self.do_run:
-            try:
-                data = queue.get()
-                if torch.cuda.is_available():
-                    torch_dtype = torch.bfloat16
-                    device = "cuda"
-                else:
-                    torch_dtype = torch.float32
-                    device = "cpu"
-
-                # Execute SD
-                settings = data["settings"]
-                img2img = data["img2img"] if 'img2img' in data else None
-
-                def check_nsfw(pipeline):
-                    nsfw_flag = False
-                    if hasattr(pipeline, "nsfw_content_detected"):
-                        nsfw_flag = any(pipeline.nsfw_content_detected)
-                    elif hasattr(pipeline, "has_nsfw_concept"):
-                        nsfw_flag = any(pipeline.has_nsfw_concept)
-                    if nsfw_flag:
-                        try:
-                            socket_payload = {
-                                'event': 'creation-failed',
-                                'data': 'Mögliche NSFW Inhalte wurden erkannt.'
-                            }
-                            for socket in WS_Create:
-                                socket.send_json(socket_payload)
-                        except Exception as e:
-                            print(e)
-                    return nsfw_flag
-
-                def progress_callback(step: int, timestep: int, latents):
-                    total_steps = pipe.scheduler.num_inference_steps
-                    elapsed = time.time() - start_time
-                    steps_done = step + 1
-                    percent = int(steps_done / total_steps * 100)
-
-                    avg_time = elapsed / steps_done
-
-                    remaining = (total_steps - steps_done) * avg_time
-                    eta = time.strftime("%H:%M:%S", time.gmtime(remaining))
-
-                    with torch.no_grad():
-                        image_tensor = pipe.vae.decode(latents / 0.18215).sample
-                        if image_tensor.dtype in [torch.bfloat16, torch.float16]:
-                            image_tensor = image_tensor.to(torch.float32)
-                        image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
-                        im = image_tensor.cpu().permute(0, 2, 3, 1)[0].numpy()
-                        im = (im * 255).round().astype("uint8")
-
-                        img = Image.fromarray(im)
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        buffered.seek(0)
-                        img_state = b64encode(buffered.getvalue()).decode(),
-
-                    CURRENT_PROCESS = {
-                        'steps': total_steps,
-                        'step': step,
-                        'percent': percent,
-                        'timestep': f"{timestep}",
-                        'eta': eta,
-                        'data': data,
-                        'img_state': img_state
-                    }
-                    socket_payload_p = {
-                        'event': 'progress',
-                        'data': CURRENT_PROCESS
-                    }
-                    for socket_p in WS_Create:
-                        socket_p.send_json(socket_payload_p)
-
-                def progress_callback_upscaler(step: int, timestep: int, latents):
-                    total_steps = upscaler.scheduler.num_inference_steps
-                    elapsed = time.time() - start_time
-                    steps_done = step + 1
-                    percent = int(steps_done / total_steps * 100)
-
-                    avg_time = elapsed / steps_done
-
-                    remaining = (total_steps - steps_done) * avg_time
-                    eta = time.strftime("%H:%M:%S", time.gmtime(remaining))
-
-                    with torch.no_grad():
-                        image_tensor = upscaler.vae.decode(latents / 0.18215).sample
-                        if image_tensor.dtype in [torch.bfloat16, torch.float16]:
-                            image_tensor = image_tensor.to(torch.float32)
-                        image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
-                        im = image_tensor.cpu().permute(0, 2, 3, 1)[0].numpy()
-                        im = (im * 255).round().astype("uint8")
-
-                        img = Image.fromarray(im)
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        buffered.seek(0)
-                        img_state = b64encode(buffered.getvalue()).decode(),
-
-                    CURRENT_PROCESS = {
-                        'steps': total_steps,
-                        'step': step,
-                        'percent': percent,
-                        'timestep': f"{timestep}",
-                        'eta': eta,
-                        'data': data,
-                        'img_state': img_state
-                    }
-                    socket_payload_p = {
-                        'event': 'progress-upscaler',
-                        'data': CURRENT_PROCESS
-                    }
-                    for socket_p in WS_Create:
-                        socket_p.send_json(socket_payload_p)
-
-
-                pipe = DiffusionPipeline.from_pretrained(settings["model"], torch_dtype=torch_dtype, cache_dir=os.path.join(BASE_DIR, 'sd_model_cache'))
-                pipe = pipe.to(device)
-
-                if settings['allow_nsfw']:
-                    pipe.safety_checker = None
-
-                match str(settings["sampler"]):
-                    case "Euler a":
-                        pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
-                    case "DDIM":
-                        pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
-                    case "DPM++ 2M":
-                        pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-                    case "UniPC":
-                        pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
-
-                if settings["tiling"]:
-                    pipe.enable_vae_tiling()
-                    pipe.enable_sequential_cpu_offload()
-
-                seed = settings["seed"] if settings["seed"] != -1 else random.randint(0, 2 ** 32 - 1)
-                generator = torch.Generator(device="cuda").manual_seed(seed)
-
-                start_time = time.time()
-
-                result = pipe(
-                    prompt=settings["prompt"],
-                    negative_prompt="nsfw," + settings["negative"],
-                    width=settings["width"],
-                    height=settings["height"],
-                    num_inference_steps=settings["steps"],
-                    true_cfg_scale=settings["cfg"],
-                    generator=generator,
-                    callback=progress_callback,
-                    callback_steps=1
-                )
-                image = result.images[0]
-                if check_nsfw(result): break
-
-                file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S")+".png")
-                image.save(file_name, format="PNG")
-
-                match settings["upscaler"]:
-                    case "4x-UltraSharp":
-                        upscaler = StableDiffusionUpscalePipeline.from_pretrained(
-                            "stabilityai/stable-diffusion-x4-upscaler",
-                            torch_dtype=torch_dtype,
-                            cache_dir = os.path.join(BASE_DIR, 'sd_model_cache')
-                        ).to("cuda")
-
-                        start_time = time.time()
-                        upscaled_result = upscaler(
-                            prompt=settings["prompt"],
-                            image=image,
-                            #num_inference_steps=settings["steps"],
-                            #generator=generator,
-                            callback=progress_callback_upscaler,
-                            callback_steps=1
-                        )
-
-                        upscaled = upscaled_result.images[0]
-                        if check_nsfw(upscaled_result): break
-                        upscaled.save(file_name, format="PNG")
-
-
-                targetImage = Image.open(file_name)
-                metadata = PngInfo()
-                metadata.add_text("SD_Data", json.dumps(data))
-                targetImage.save(file_name, format="PNG", pnginfo=metadata)
-
-                buffer = BytesIO()
-                image.save(buffer, format="PNG")
-                buffer.seek(0)
-
+    def check_nsfw(self, pipeline):
+        nsfw_flag = False
+        '''
+            if hasattr(pipeline, "nsfw_content_detected"):
+                nsfw_flag = any(pipeline.nsfw_content_detected)
+            elif hasattr(pipeline, "has_nsfw_concept"):
+                nsfw_flag = any(pipeline.has_nsfw_concept)
+            if nsfw_flag:
                 try:
                     socket_payload = {
-                        'event': 'creation-finished',
-                        'data': b64encode(buffer.getvalue()).decode(),
+                        'event': 'creation-failed',
+                        'data': 'Mögliche NSFW Inhalte wurden erkannt.'
                     }
-
                     for socket in WS_Create:
                         socket.send_json(socket_payload)
                 except Exception as e:
                     print(e)
+            return nsfw_flag
+            '''
+        return False
 
+
+    def txt2img(self, settings, progress_callback):
+        self.current_pipe = pipe = DiffusionPipeline.from_pretrained(settings["model"], torch_dtype=self.torch_dtype, cache_dir=os.path.join(BASE_DIR, 'sd_model_cache'))
+        pipe = pipe.to(self.device)
+        # if settings['allow_nsfw']: pipe.safety_checker = None
+        pipe.safety_checker = None
+
+        # Add Sampler to pipe
+        self.add_sampler(pipe, settings["sampler"])
+
+        if settings["tiling"]:
+            pipe.enable_vae_tiling()
+            pipe.enable_sequential_cpu_offload()
+
+        seed = settings["seed"] if settings["seed"] != -1 else random.randint(0, 2 ** 32 - 1)
+        generator = torch.Generator(device=self.device).manual_seed(seed)
+
+        self.start_time = time.time()
+        result = pipe(
+            prompt=settings["prompt"],
+            negative_prompt=settings["negative"],
+            width=settings["width"],
+            height=settings["height"],
+            num_inference_steps=settings["steps"],
+            true_cfg_scale=settings["cfg"],
+            generator=generator,
+            callback=progress_callback,
+            callback_steps=1
+        )
+        image = result.images[0]
+        if self.check_nsfw(result): return None
+
+        file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+        image.save(file_name, format="PNG")
+        return file_name
+
+    def img2img(self, settings, image):
+        pass
+
+    def upscale(self, upscaler_name, image, prompt, negative_prompt, progress_callback_upscaler):
+        file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+
+        match upscaler_name:
+            case "4x-UltraSharp":
+                self.current_upscaler = upscaler = StableDiffusionUpscalePipeline.from_pretrained(
+                    "stabilityai/stable-diffusion-x4-upscaler",
+                    torch_dtype=self.torch_dtype,
+                    cache_dir = os.path.join(BASE_DIR, 'sd_model_cache')
+                ).to("cuda")
+
+                self.start_time = time.time()
+                upscaled_result = upscaler(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    image=image,
+                    callback=progress_callback_upscaler,
+                    callback_steps=1
+                )
+
+                upscaled = upscaled_result.images[0]
+                if self.check_nsfw(upscaled_result): return None
+                upscaled.save(file_name, format="PNG")
+        return file_name
+
+
+    def add_meta(self, image_path, meta):
+        targetImage = Image.open(image_path)
+        metadata = PngInfo()
+        metadata.add_text("SD_Data", json.dumps(meta))
+        targetImage.save(image_path, format="PNG", pnginfo=metadata)
+
+    def add_sampler(self, pipe, sampler):
+        match str(sampler):
+            case "Euler a":
+                pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+            case "DDIM":
+                pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+            case "DPM++ 2M":
+                pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+            case "UniPC":
+                pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
+
+    def broadcast_result(self, image_path):
+        image = Image.open(image_path)
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        buffer.seek(0)
+
+        try:
+            socket_payload = {
+                'event': 'creation-finished',
+                'data': b64encode(buffer.getvalue()).decode(),
+            }
+            for socket in WS_Create: socket.send_json(socket_payload)
+        except Exception as e:
+            print(e)
+
+    def progress_callback(self, step: int, timestep: int, latents):
+        total_steps = self.current_pipe.scheduler.num_inference_steps
+        elapsed = time.time() - self.start_time
+        steps_done = step + 1
+        percent = int(steps_done / total_steps * 100)
+
+        avg_time = elapsed / steps_done
+
+        remaining = (total_steps - steps_done) * avg_time
+        eta = time.strftime("%H:%M:%S", time.gmtime(remaining))
+
+        with torch.no_grad():
+            image_tensor = self.current_pipe.vae.decode(latents / 0.18215).sample
+            if image_tensor.dtype in [torch.bfloat16, torch.float16]:
+                image_tensor = image_tensor.to(torch.float32)
+            image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
+            im = image_tensor.cpu().permute(0, 2, 3, 1)[0].numpy()
+            im = (im * 255).round().astype("uint8")
+
+            img = Image.fromarray(im)
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            buffered.seek(0)
+            img_state = b64encode(buffered.getvalue()).decode(),
+
+        CURRENT_PROCESS = {
+            'steps': total_steps,
+            'step': step,
+            'percent': percent,
+            'timestep': f"{timestep}",
+            'eta': eta,
+            'data': self.data,
+            'img_state': img_state
+        }
+        socket_payload_p = {
+            'event': 'progress',
+            'data': CURRENT_PROCESS
+        }
+        for socket_p in WS_Create:
+            socket_p.send_json(socket_payload_p)
+
+    def progress_callback_upscaler(self, step: int, timestep: int, latents):
+        total_steps = self.current_upscaler.scheduler.num_inference_steps
+        elapsed = time.time() - self.start_time
+        steps_done = step + 1
+        percent = int(steps_done / total_steps * 100)
+
+        avg_time = elapsed / steps_done
+
+        remaining = (total_steps - steps_done) * avg_time
+        eta = time.strftime("%H:%M:%S", time.gmtime(remaining))
+
+        with torch.no_grad():
+            image_tensor = self.current_upscaler.vae.decode(latents / 0.18215).sample
+            if image_tensor.dtype in [torch.bfloat16, torch.float16]:
+                image_tensor = image_tensor.to(torch.float32)
+            image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
+            im = image_tensor.cpu().permute(0, 2, 3, 1)[0].numpy()
+            im = (im * 255).round().astype("uint8")
+
+            img = Image.fromarray(im)
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            buffered.seek(0)
+            img_state = b64encode(buffered.getvalue()).decode(),
+
+        CURRENT_PROCESS = {
+            'steps': total_steps,
+            'step': step,
+            'percent': percent,
+            'timestep': f"{timestep}",
+            'eta': eta,
+            'data': self.data,
+            'img_state': img_state
+        }
+        socket_payload_p = {
+            'event': 'progress-upscaler',
+            'data': CURRENT_PROCESS
+        }
+        for socket_p in WS_Create:
+            socket_p.send_json(socket_payload_p)
+
+    def run(self):
+        global queue, CURRENT_PROCESS
+
+        while self.do_run:
+            try:
+                self.data = data = queue.get()
+                event_type = data['event_type'] # eg txt2img, img2img, etc..
+                settings = data["settings"]
+
+                result_path = None
+
+                if event_type == 'upscale':
+                    image_data = b64decode(data['img'])
+                    image_file = BytesIO(image_data)
+                    image = Image.open(image_file)
+                    result_path = self.upscale(settings["upscaler"], image, settings["prompt"], settings["negative"], progress_callback_upscaler=self.progress_callback_upscaler)
+
+                if event_type == 'txt2img':
+                    result_path = self.txt2img(settings, progress_callback=self.progress_callback)
+
+                if result_path is None: continue
+                self.add_meta(result_path, settings)
+                self.broadcast_result(result_path)
+
+
+                '''
+                start_time = time.time()
+                result_path = None
+
+                # img2img = data["img2img"] if 'img2img' in data else None
+                if event_type == "txt2img":
+                    print("Processing txt2img..")
+                    result_path = self.txt2img(settings, pipe, generator, progress_callback=progress_callback)
+                    if result_path is None: continue
+
+                img_to_upscale = Image.open(result_path)
+                result_path = self.upscale(settings["upscaler"], img_to_upscale, settings["prompt"], settings["negative"], progress_callback_upscaler=progress_callback_upscaler)
+                if result_path is None: continue
+                self.add_meta(result_path, settings)
+                self.broadcast_result(result_path)
+                '''
             except Empty:
+                print("Queue is empty")
                 #self.do_run = False
-                pass
+            '''
+            except Exception as e:
+                print("Error:", e)
+                e.with_traceback()
+                continue
+            '''
 
         print(f"{self.name} stopped!")

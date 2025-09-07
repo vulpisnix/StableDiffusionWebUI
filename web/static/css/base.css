@@ -12,6 +12,11 @@
     --warning: #f59e0b;
     --success: #22c55e;
     --shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .02);
+
+    --card-bg: #222;
+    --hover-bg: #333;
+    --border-color: #444;
+    --accent2: #4f46e5;
 }
 
 

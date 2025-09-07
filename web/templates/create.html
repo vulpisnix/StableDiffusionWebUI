@@ -15,176 +15,308 @@
 
 {% block body %}
 
+    <section class="mode-switch container">
+        <div class="tabs">
+            <button class="tab active" data-mode="txt2img">📝 Text → Bild</button>
+            <button class="tab" data-mode="img2img">🖼️ Bild → Bild</button>
+            <button class="tab" data-mode="upscale">🔍 Upscale</button>
+        </div>
+    </section>
+
     <main class="container" id="app">
-        <div class="grid">
-            <!-- LEFT: Controls -->
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Eingabe</div>
-                        <div class="card-sub">Prompt, Modelle & Parameter</div>
+        <main class="container" id="app">
+            <div class="grid">
+
+                <!-- SECTION TXT2IMG -->
+                <section class="card" data-section="txt2img">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Eingabe</div>
+                            <div class="card-sub">Prompt, Modelle & Parameter</div>
+                        </div>
+                        <button class="icon-btn secondary" id="resetBtn">Zurücksetzen</button>
                     </div>
-                    <button class="icon-btn secondary" id="resetBtn">Zurücksetzen</button>
-                </div>
-                <div class="card-body row">
-                    <div class="row">
-                        <label class="label" for="prompt">Prompt</label>
-                        <textarea id="prompt" class="textarea"
-                                  placeholder="z.B. ultra-detailed portrait of a cyberpunk cat, neon lights, 85mm"
-                                  spellcheck="false"></textarea>
-                        <div class="pills" id="promptPills">
-                            <span class="pill" data-insert="," data-text="dramatic lighting">dramatic lighting</span>
-                            <span class="pill" data-insert="," data-text="highly detailed">highly detailed</span>
-                            <span class="pill" data-insert="," data-text="8k uhd">8k uhd</span>
+                    <div class="card-body row">
+                        <div class="row">
+                            <label class="label" for="prompt">Prompt</label>
+                            <textarea id="prompt" class="textarea"
+                                      placeholder="z.B. ultra-detailed portrait of a cyberpunk cat, neon lights, 85mm"
+                                      spellcheck="false"
+                                      data-section-element="prompt"
+                            ></textarea>
+                            <div class="pills" id="promptPills">
+                                <span class="pill" data-insert=","
+                                      data-text="dramatic lighting">dramatic lighting</span>
+                                <span class="pill" data-insert="," data-text="highly detailed">highly detailed</span>
+                                <span class="pill" data-insert="," data-text="8k uhd">8k uhd</span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <label class="label" for="neg">Negativer Prompt</label>
+                            <textarea id="neg" class="textarea"
+                                      placeholder="z.B. lowres, blurry, extra limbs, watermark"
+                                      spellcheck="false"
+                                      data-section-element="neg"></textarea>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="row">
+                                <label class="label" for="model">Modell</label>
+                                <select id="model" class="select" data-section-element="model">
+                                    {% for model in models %}
+                                        <option value="{{ model.id }}">{{ model.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="row">
+                                <label class="label" for="sampler">Sampler</label>
+                                <select id="sampler" class="select" data-section-element="sampler">
+                                    <option>Euler a</option>
+                                    <option>DDIM</option>
+                                    <option>DPM++ 2M</option>
+                                    <option>UniPC</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid-3">
+                            <div class="row">
+                                <div class="label">Schritte <span id="stepsVal" class="card-sub"></span></div>
+                                <div class="range-wrap"><input id="steps" class="range" type="range" min="1" max="120"
+                                                               value="30" data-section-element="steps"><span
+                                        class="bubble"
+                                        aria-hidden="true">30</span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="label">CFG <span id="cfgVal" class="card-sub"></span></div>
+                                <div class="range-wrap"><input id="cfg" class="range" type="range" min="1" max="20"
+                                                               value="7" data-section-element="cfg"><span class="bubble"
+                                                                                                          aria-hidden="true">7</span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="label">Seed <span id="seedVal" class="card-sub"></span></div>
+                                <input id="seed" class="input" type="number" placeholder="-1 = zufällig" value="-1"
+                                       data-section-element="seed"/>
+                            </div>
+                        </div>
+
+                        <div class="grid-3">
+                            <div class="row">
+                                <label class="label">Breite</label>
+                                <input id="width" class="input" type="number" value="512" data-section-element="width"/>
+                            </div>
+                            <div class="row">
+                                <label class="label">Höhe</label>
+                                <input id="height" class="input" type="number" value="512"
+                                       data-section-element="height"/>
+                            </div>
+                            <div class="row">
+                                <label class="label">Upscaler</label>
+                                <select id="upscaler" class="select" data-section-element="upscaler">
+                                    <option>Keiner</option>
+                                    <option>4x-UltraSharp</option>
+                                    <option>ESRGAN</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <details>
+                            <summary class="label" style="cursor:pointer">Erweitert</summary>
+                            <div class="row" style="margin-top:12px">
+                                <div class="grid-2">
+                                    <label class="input" style="display:flex;align-items:center;gap:10px"><input
+                                            type="checkbox" id="tiling" data-section-element="tiling"> Tiling</label>
+                                    <label class="input" style="display:flex;align-items:center;gap:10px"><input
+                                            type="checkbox" id="hiresfix" data-section-element="hiresfix" checked> Hires
+                                        Fix</label>
+                                </div>
+                                <div class="grid-2">
+                                    <div class="row">
+                                        <label class="label">Guidance (Refiner)</label>
+                                        <div class="range-wrap"><input id="refiner" class="range" type="range" min="0"
+                                                                       max="1" step="0.05" value="0.2"
+                                                                       data-section-element="refiner"><span
+                                                class="bubble">0.2</span>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <label class="label">ETA / Noise</label>
+                                        <div class="range-wrap"><input id="eta" class="range" type="range" min="0"
+                                                                       max="1"
+                                                                       step="0.01" value="0.0"
+                                                                       data-section-element="eta"><span
+                                                class="bubble">0.00</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <div class="toolbar">
+                            <button class="btn generateBtn" id="generateBtn">⚡ Generieren</button>
+                            <button class="btn secondary" id="queueBtn">➕ Warteschlange</button>
+                            <button class="btn secondary" id="randomizeBtn">🎲 Zufälliger Seed</button>
+                        </div>
+
+                        <div class="row">
+                            <div class="label">Fortschritt<span class="progressLabel"></span></div>
+                            <div class="progress" aria-live="polite" aria-label="Fortschrittsanzeige"><span
+                                    class="progressBar"></span></div>
                         </div>
                     </div>
+                </section>
 
-                    <div class="row">
-                        <label class="label" for="neg">Negativer Prompt</label>
-                        <textarea id="neg" class="textarea" placeholder="z.B. lowres, blurry, extra limbs, watermark"
-                                  spellcheck="false"></textarea>
-                    </div>
-
-                    <div class="grid-2">
-                        <div class="row">
-                            <label class="label" for="model">Modell</label>
-                            <select id="model" class="select">
-                                {% for model in models %}
-                                    <option value="{{ model.id }}">{{ model.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="row">
-                            <label class="label" for="sampler">Sampler</label>
-                            <select id="sampler" class="select">
-                                <option>Euler a</option>
-                                <option>DDIM</option>
-                                <option>DPM++ 2M</option>
-                                <option>UniPC</option>
-                            </select>
+                <!-- SECTION IMG2IMG -->
+                <section class="card" data-section="img2img" style="display:none">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Bild → Bild</div>
+                            <div class="card-sub">Upload & Transformation</div>
                         </div>
                     </div>
-
-                    <div class="grid-3">
+                    <div class="card-body row">
                         <div class="row">
-                            <div class="label">Schritte <span id="stepsVal" class="card-sub"></span></div>
-                            <div class="range-wrap"><input id="steps" class="range" type="range" min="1" max="120"
-                                                           value="30"><span class="bubble" aria-hidden="true">30</span>
+                            <div class="label">Bild-zu-Bild</div>
+                            <div class="dropzone" id="dropzone" data-section-element="dropzone">
+                                <input type="file" accept="image/*" hidden/>
+                                <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
+                                <p class="card-sub">Stärke <span id="strengthValue">0.5</span></p>
+                                <div class="range-wrap" style="margin-top:8px;max-width:420px;margin-inline:auto"><input
+                                        id="strength" class="range" type="range" min="0" max="1" step="0.01"
+                                        value="0.5" data-section-element="strength"><span class="bubble">0.50</span>
+                                </div>
+                                <div class="preview hidden" style="margin-top:12px"></div>
+                            </div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="btn generateBtn" id="img2imgGenerate">⚡ Generieren</button>
+                            <button class="btn secondary" id="queueBtn">➕ Warteschlange</button>
+                        </div>
+                        <div class="row">
+                            <div class="label">Fortschritt<span class="progressLabel"></span></div>
+                            <div class="progress" aria-live="polite" aria-label="Fortschrittsanzeige"><span
+                                    class="progressBar"></span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION UPSCALE -->
+                <section class="card" data-section="upscale" style="display:none">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Upscaler</div>
+                            <div class="card-sub">Bild vergrößern & schärfen</div>
+                        </div>
+                    </div>
+                    <div class="card-body row">
+                        <div class="row">
+                            <div class="label">Bild</div>
+                            <div class="dropzone" id="dropzone" data-section-element="dropzone">
+                                <input type="file" accept="image/*" hidden/>
+                                <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
+                                <div class="preview hidden" style="margin-top:12px"></div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="label">CFG <span id="cfgVal" class="card-sub"></span></div>
-                            <div class="range-wrap"><input id="cfg" class="range" type="range" min="1" max="20"
-                                                           value="7"><span class="bubble" aria-hidden="true">7</span>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="label">Seed <span id="seedVal" class="card-sub"></span></div>
-                            <input id="seed" class="input" type="number" placeholder="-1 = zufällig" value="-1"/>
-                        </div>
-                    </div>
-
-                    <div class="grid-3">
-                        <div class="row">
-                            <label class="label">Breite</label>
-                            <input id="width" class="input" type="number" value="512"/>
-                        </div>
-                        <div class="row">
-                            <label class="label">Höhe</label>
-                            <input id="height" class="input" type="number" value="512"/>
-                        </div>
-                        <div class="row">
-                            <label class="label">Upscaler</label>
-                            <select id="upscaler" class="select">
-                                <option>Keiner</option>
+                            <label class="label">Upscaler auswählen</label>
+                            <select id="upscaler" class="select" data-section-element="upscaler">
                                 <option>4x-UltraSharp</option>
                                 <option>ESRGAN</option>
                             </select>
                         </div>
-                    </div>
 
-                    <details>
-                        <summary class="label" style="cursor:pointer">Erweitert</summary>
-                        <div class="row" style="margin-top:12px">
-                            <div class="grid-2">
-                                <label class="input" style="display:flex;align-items:center;gap:10px"><input
-                                        type="checkbox" id="tiling"> Tiling</label>
-                                <label class="input" style="display:flex;align-items:center;gap:10px"><input
-                                        type="checkbox" id="hiresfix" checked> Hires Fix</label>
-                            </div>
-                            <div class="grid-2">
-                                <div class="row">
-                                    <label class="label">Guidance (Refiner)</label>
-                                    <div class="range-wrap"><input id="refiner" class="range" type="range" min="0"
-                                                                   max="1" step="0.05" value="0.2"><span class="bubble">0.2</span>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <label class="label">ETA / Noise</label>
-                                    <div class="range-wrap"><input id="eta" class="range" type="range" min="0" max="1"
-                                                                   step="0.01" value="0.0"><span
-                                            class="bubble">0.00</span></div>
-                                </div>
-                            </div>
+                        <div class="row">
+                            <label class="label" for="prompt">Prompt</label>
+                            <textarea id="prompt" class="textarea"
+                                      placeholder="z.B. ultra-detailed portrait of a cyberpunk cat, neon lights, 85mm"
+                                      spellcheck="false" data-section-element="prompt"></textarea>
                         </div>
-                    </details>
 
-                    <div class="row">
-                        <div class="label">Bild-zu-Bild (optional)</div>
-                        <div class="dropzone" id="dropzone">
-                            <input type="file" id="file" accept="image/*" hidden/>
-                            <p><strong>Datei hierher ziehen</strong> oder klicken zum Auswählen</p>
-                            <p class="card-sub">Stärke <span id="strengthValue">0.5</span></p>
-                            <div class="range-wrap" style="margin-top:8px;max-width:420px;margin-inline:auto"><input
-                                    id="strength" class="range" type="range" min="0" max="1" step="0.01"
-                                    value="0.5"><span class="bubble">0.50</span></div>
-                            <div id="preview" class="preview hidden" style="margin-top:12px"></div>
+                        <div class="row">
+                            <label class="label" for="neg">Negativer Prompt</label>
+                            <textarea id="neg" class="textarea"
+                                      placeholder="z.B. lowres, blurry, extra limbs, watermark"
+                                      spellcheck="false" data-section-element="neg"></textarea>
+                        </div>
+
+
+                        <div class="toolbar">
+                            <button class="btn generateBtn" id="upscaleGenerate">🔍 Upscale</button>
+                            <button class="btn secondary" id="queueBtn">➕ Warteschlange</button>
+                        </div>
+
+                        <div class="row">
+                            <div class="label">Fortschritt<span class="progressLabel"></span></div>
+                            <div class="progress" aria-live="polite" aria-label="Fortschrittsanzeige"><span
+                                    class="progressBar"></span></div>
                         </div>
                     </div>
+                </section>
 
-                    <div class="toolbar">
-                        <button class="btn" id="generateBtn">⚡ Generieren (Ctrl+Enter)</button>
-                        <button class="btn secondary" id="queueBtn">➕ Warteschlange</button>
-                        <button class="btn secondary" id="randomizeBtn">🎲 Zufälliger Seed</button>
-                    </div>
 
-                    <div class="row">
-                        <div class="label">Fortschritt<span id="progressLabel"></span></div>
-                        <div class="progress" aria-live="polite" aria-label="Fortschrittsanzeige"><span id="progressBar"></span></div>
+                <!-- RIGHT: Output -->
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Ergebnisse</div>
+                            <div class="card-sub">Galerie, Verlauf & Aktionen</div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="icon-btn" id="saveAll">Alle speichern</button>
+                            <button class="icon-btn" id="clearGallery">Leeren</button>
+                        </div>
                     </div>
-                </div>
-            </section>
-
-            <!-- RIGHT: Output -->
-            <section class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Ergebnisse</div>
-                        <div class="card-sub">Galerie, Verlauf & Aktionen</div>
+                    <div class="card-body row">
+                        <div id="gallery" class="gallery" aria-live="polite"></div>
+                        <div class="footer">
+                            <strong>Made with ♥️ by Philipp Schott</strong>
+                        </div>
                     </div>
-                    <div class="toolbar">
-                        <button class="icon-btn" id="saveAll">Alle speichern</button>
-                        <button class="icon-btn" id="clearGallery">Leeren</button>
-                    </div>
-                </div>
-                <div class="card-body row">
-                    <div id="gallery" class="gallery" aria-live="polite"></div>
-                    <div class="footer">
-                        <strong>Made with ♥️ by Philipp Schott</strong>
-                    </div>
-                </div>
-            </section>
-        </div>
+                </section>
+            </div>
+        </main>
     </main>
 
     <div class="toast" id="toast"></div>
 
 
     <script>
+        // --- Mode Switch ---
+        const tabs = document.querySelectorAll('.tab');
+        let currentMode = "txt2img";
+        let currentTab = undefined;
+        document.querySelectorAll('[data-section]').forEach(sec => {
+            if (sec.dataset.section === currentMode) {
+                currentTab = sec;
+            }
+        });
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMode = tab.dataset.mode;
+
+                document.querySelectorAll('[data-section]').forEach(sec => {
+                    sec.style.display = (sec.dataset.section === currentMode) ? 'block' : 'none';
+                    if (sec.dataset.section === currentMode) {
+                        currentTab = sec;
+                    }
+                });
+
+                showToast("Mode: " + tab.textContent.trim());
+            });
+        });
+    </script>
+
+    <script>
+        let socketConnected = false;
         let socket = undefined;
         const createWebSocket = () => {
             socket = new WebSocket('ws://' + location.host + '/ws/create/');
             socket.onopen = () => {
+                socketConnected = true;
                 showToast('Verbunden!');
             }
             socket.onmessage = (e) => {
@@ -196,59 +328,65 @@
                     document.getElementById('generation-preview').remove();
                     addToGallery(data);
 
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = '⚡ Generieren (Ctrl+Enter)';
-                    progressLabel.innerText = "";
-                }
-                else if(event === "progress") {
-                    const steps = data["steps"];
-                    const step = data["step"];
-
-                    const pct = data["percent"];
-                    progressBar.style.width = pct + '%';
-                    progressLabel.innerText = ` (${step} / ${steps}) ETA: ${data["eta"]}`;
-
-                    previewGenerationState(data["img_state"]);
-
-                    if(!generateBtn.disabled) {
-                        generateBtn.disabled = true;
-                        generateBtn.textContent = '⏳ Generiere...';
+                    for (let i = 0; i < generateBtns.length; i++) {
+                        generateBtns[i].disabled = false;
+                        generateBtns[i].textContent = '⚡ Generieren';
                     }
-                }
-                else if(event === "progress-upscaler") {
+                    for (let i = 0; i < progressLabels.length; i++) {
+                        progressLabels[i].innerText = "";
+                    }
+                } else if (event === "progress") {
                     const steps = data["steps"];
                     const step = data["step"];
-
                     const pct = data["percent"];
-                    progressBar.style.width = pct + '%';
-                    progressLabel.innerText = ` (${step} / ${steps}) ETA: ${data["eta"]} - Upscaling`;
+
+                    updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]}`);
 
                     previewGenerationState(data["img_state"]);
 
-                    if(!generateBtn.disabled) {
-                        generateBtn.disabled = true;
-                        generateBtn.textContent = '⏳ Generiere...';
+                    if (!isCurrentlyGenerating()) {
+                        for (let i = 0; i < generateBtns.length; i++) {
+                            generateBtns[i].disabled = true;
+                            generateBtns[i].textContent = '⏳ Generiere...';
+                        }
+                    }
+                } else if (event === "progress-upscaler") {
+                    const steps = data["steps"];
+                    const step = data["step"];
+                    const pct = data["percent"];
+                    updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]} - Upscaling`);
+
+                    previewGenerationState(data["img_state"]);
+
+                    if (!isCurrentlyGenerating()) {
+                        for (let i = 0; i < generateBtns.length; i++) {
+                            generateBtns[i].disabled = true;
+                            generateBtns[i].textContent = '⏳ Generiere...';
+                        }
                     }
                 } else {
                     console.log(event)
                 }
             }
             socket.onclose = () => {
+                socketConnected = false;
                 showToast('Verbindung verloren..');
-                setTimeout(createWebSocket, 500);
+                setTimeout(createWebSocket, 1000);
             }
         }
         const sendSocketMessage = (event = '', json_data = {}) => {
-            if (socket === undefined) return;
+            if (socket === undefined || !socketConnected) {
+                showToast("Nicht Verbunden..");
+                return false;
+            }
             socket.send(JSON.stringify({
                 'event': event,
                 'data': json_data
             }));
+            return true;
         }
-
         createWebSocket();
     </script>
-
 
     <script>
         // --- UI Helpers ---
@@ -285,47 +423,63 @@
         });
 
         // --- Dropzone ---
-        const dz = document.getElementById('dropzone');
-        const fileInput = document.getElementById('file');
-        const preview = document.getElementById('preview');
-        dz.addEventListener('click', () => fileInput.click());
-        dz.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dz.classList.add('dragover');
-        });
-        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-        dz.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dz.classList.remove('dragover');
-            const f = e.dataTransfer.files[0];
-            if (f) handleFile(f);
-        });
-        fileInput.addEventListener('change', (e) => {
-            const f = e.target.files[0];
-            if (f) handleFile(f);
-        });
+        const dzs = document.getElementsByClassName('dropzone');
+        for (let i = 0; i < dzs.length; i++) {
+            const dz = dzs[i];
+            const preview = dz.getElementsByClassName('preview')[0];
 
-        function handleFile(file) {
+            const fileInput = dz.getElementsByTagName('input')[0];
+            fileInput.addEventListener('change', (e) => {
+                const f = e.target.files[0];
+                if (f) handleFile(f, fileInput, preview);
+            });
+
+
+            dz.addEventListener('click', () => fileInput.click());
+            dz.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dz.classList.add('dragover');
+            });
+            dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('dragover');
+                const f = e.dataTransfer.files[0];
+                if (f) handleFile(f, fileInput, preview);
+            });
+        }
+
+        function handleFile(file, fileInput, preview) {
             const reader = new FileReader();
             reader.onload = (e) => {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Vorlage"><div><div class="card-sub">${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB</div><div class="pills"><span class="pill" id="removeImg">Entfernen</span><span class="pill">Als Init-Image</span></div></div>`;
+                preview.innerHTML = `<img src="${e.target.result}" alt="Vorlage"><div><div class="card-sub">${file.name} • ${(file.size / 1024 / 1024).toFixed(2)} MB</div></div>`;
                 preview.classList.remove('hidden');
-                preview.querySelector('#removeImg').onclick = () => {
-                    preview.classList.add('hidden');
-                    preview.innerHTML = '';
-                    fileInput.value = '';
-                };
             };
             reader.readAsDataURL(file);
+        }
+
+        function getBase64ImageData(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    return resolve(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            })
         }
 
         // --- Toast ---
         const toast = document.getElementById('toast');
 
+        let toastTimeout = undefined;
         function showToast(msg, timeout = 2200) {
+            if(toastTimeout) clearTimeout(toastTimeout);
             toast.textContent = msg;
             toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', timeout);
+            toastTimeout = setTimeout(() => {
+                toast.style.display = 'none';
+                toastTimeout = undefined;
+            }, timeout);
         }
 
         // --- Buttons ---
@@ -351,35 +505,67 @@
         });
 
         // --- Keyboard Shortcut ---
+        /*
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate();
         });
+        */
 
-        const progressBar = document.getElementById('progressBar');
-        const progressLabel = document.getElementById('progressLabel');
-        const generateBtn = document.getElementById('generateBtn');
-        generateBtn.addEventListener('click', generate);
+        const progressBars = document.getElementsByClassName('progressBar');
+        const progressLabels = document.getElementsByClassName('progressLabel');
+        const generateBtns = document.getElementsByClassName('generateBtn');
+        for (let i = 0; i < generateBtns.length; i++) {
+            generateBtns[i].addEventListener('click', generate);
+        }
         document.getElementById('queueBtn').addEventListener('click', () => {
-
-            //ToDo: Generate Image
-            sendSocketMessage('create', {
-                'settings': collectPayload(),
-                'img2img': undefined
-            });
-
-            showToast('Zur Warteschlange hinzugefügt');
+            generate();
         });
 
-        async function generate() {
-            if (generateBtn.disabled) return;
-            generateBtn.disabled = true;
-            generateBtn.textContent = '⏳ Generiere...';
+        const updateProgressBar = (steps, step, pct, text) => {
 
-            //ToDo: Generate Image
-            sendSocketMessage('create', {
-                'settings': collectPayload(),
-                'img2img': undefined
-            });
+            for (let i = 0; i < progressBars.length; i++) {
+                progressBars[i].style.width = pct + '%';
+            }
+            for (let i = 0; i < progressLabels.length; i++) {
+                progressLabels[i].innerText = text;
+            }
+        }
+
+        const isCurrentlyGenerating = () => {
+            for (let i = 0; i < generateBtns.length; i++) {
+                if(generateBtns[i].disabled) return true;
+            }
+            return false;
+        }
+
+        async function generate() {
+            let payload = await collectPayload();
+            if(payload === null) {
+                showToast("Bitte füge ein Bild hinzu")
+                return;
+            }
+            let isGenerating = isCurrentlyGenerating();
+            for (let i = 0; i < generateBtns.length; i++) {
+                generateBtns[i].disabled = true;
+                generateBtns[i].textContent = '⏳ Generiere...';
+            }
+
+            let img = payload.img;
+            payload.img = undefined;
+            let payload_final = {
+                'event_type': currentMode,
+                'settings': payload,
+                'img': img,
+            }
+            let sent = sendSocketMessage('create', payload_final);
+
+            if (!sent) {
+                for (let i = 0; i < generateBtns.length; i++) {
+                    generateBtns[i].disabled = false;
+                    generateBtns[i].textContent = '⚡ Generieren';
+                }
+            }
+            if(isGenerating && sent) showToast('Zur Warteschlange hinzugefügt');
         }
 
         // --- Gallery ---
@@ -406,7 +592,7 @@
             const imageSrc = 'data:image/png;base64,' + base64Image;
 
             let el = document.getElementById('generation-preview');
-            if(el === null) {
+            if (el === null) {
                 el = document.createElement('div');
                 el.id = 'generation-preview';
                 el.className = 'thumb';
@@ -416,7 +602,7 @@
             } else {
                 el.getElementsByTagName('img')[0].src = imageSrc;
             }
-            if(!gallery.contains(el)) gallery.prepend(el);
+            if (!gallery.contains(el)) gallery.prepend(el);
 
         }
 
@@ -426,38 +612,47 @@
         });
         document.getElementById('saveAll').addEventListener('click', () => showToast('Bitte im Backend implementieren: ZIP-Export'));
 
-        // --- Export Settings ---
-        document.getElementById('exportBtn').addEventListener('click', () => {
-            const payload = collectPayload();
-            const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'sd-settings.json';
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('Settings exported!');
-        });
-
-        function collectPayload() {
-            return {
-                prompt: document.getElementById('prompt').value,
-                negative: document.getElementById('neg').value,
-                model: document.getElementById('model').value,
-                sampler: document.getElementById('sampler').value,
-                steps: Number(document.getElementById('steps').value),
-                cfg: Number(document.getElementById('cfg').value),
-                seed: Number(document.getElementById('seed').value),
-                width: Number(document.getElementById('width').value),
-                height: Number(document.getElementById('height').value),
-                upscaler: document.getElementById('upscaler').value,
-                tiling: document.getElementById('tiling').checked,
-                hiresfix: document.getElementById('hiresfix').checked,
-                refiner: Number(document.getElementById('refiner').value),
-                eta: Number(document.getElementById('eta').value),
-                strength: Number(document.getElementById('strength').value),
-                allow_nsfw: false,
-            };
+        async function collectPayload() {
+            let elements = Array.from(currentTab.querySelectorAll('[data-section-element]'));
+            const getElementById = (id) => {
+                let found = elements.filter(item => item.id === id);
+                if (found.length > 0) return found[0];
+                return undefined;
+            }
+            let file = undefined;
+            switch (currentMode) {
+                case 'txt2img':
+                    return {
+                        prompt: getElementById('prompt').value,
+                        negative: getElementById('neg').value,
+                        model: getElementById('model').value,
+                        sampler: getElementById('sampler').value,
+                        steps: Number(getElementById('steps').value),
+                        cfg: Number(getElementById('cfg').value),
+                        seed: Number(getElementById('seed').value),
+                        width: Number(getElementById('width').value),
+                        height: Number(getElementById('height').value),
+                        upscaler: getElementById('upscaler').value,
+                        tiling: getElementById('tiling').checked,
+                        hiresfix: getElementById('hiresfix').checked,
+                        refiner: Number(getElementById('refiner').value),
+                        eta: Number(getElementById('eta').value),
+                    };
+                case 'img2img':
+                    file = getElementById('dropzone').getElementsByTagName('img')[0].src.replace("data:image/png;base64,", "");
+                    return {
+                        img: file,
+                        strength: Number(getElementById('strength').value),
+                    };
+                case 'upscale':
+                    file = getElementById('dropzone').getElementsByTagName('img')[0].src.replace("data:image/png;base64,", "");
+                    return {
+                        img: file,
+                        upscaler: getElementById('upscaler').value,
+                        prompt: getElementById('prompt').value,
+                        negative: getElementById('neg').value,
+                    };
+            }
         }
     </script>
 {% endblock %}

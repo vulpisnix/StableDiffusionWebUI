@@ -291,3 +291,32 @@ a {
 .hidden {
     display: none !important;
 }
+
+
+
+
+.mode-switch {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.tabs {
+    display: flex;
+    gap: .5rem;
+}
+.tab {
+    padding: .6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #444);
+    background: var(--card-bg, #222);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #fff;
+    font-size: 18px;
+}
+.tab:hover {
+    background: var(--hover-bg, #333);
+}
+.tab.active {
+    background: var(--accent2, #4f46e5);
+    border-color: var(--accent2, #4f46e5);
+}
