@@ -37,13 +37,22 @@ class ViewIndex(View):
             }
 
             if 'SD_Data' in imgg.info:
-                sd_data = json.loads(imgg.info['SD_Data'])['settings']
+                sd_data = json.loads(imgg.info['SD_Data'])
+                if 'settings' in sd_data:
+                    sd_data = sd_data['settings']
+
+            model = 'Unknown/Unknown'
+            if 'model' not in sd_data and 'upscaler' in sd_data:
+                model = sd_data['upscaler'] + " (Upscaler)"
+
+            if 'model' in sd_data:
+                model = sd_data['model'].split('/')[-1]
 
             images.insert(0, {
                 'width': imgg.size[0],
                 'height': imgg.size[1],
                 'base64': b64encode(buffer.getvalue()).decode(),
-                'model': sd_data['model'].split('/')[-1],
+                'model': model,
             })
 
         return render(request, self.template_name, context={'images': images})
