@@ -1,0 +1,43 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}
+    Adminbereich
+{% endblock %}
+
+{% block head %}
+	<link rel="stylesheet" href="{% static 'css/dashboard/dashboard.css' %}" />
+{% endblock %}
+
+{% block body %}
+
+    <section class="mode-switch container">
+        <div class="tabs">
+            <button class="tab active" data-mode="settings">Einstellungen</button>
+            <button class="tab" data-mode="users">Benutzer</button>
+            <button class="tab" data-mode="logs">Logs</button>
+        </div>
+    </section>
+
+    {% block admin_body %}
+        Admin Body
+    {% endblock %}
+
+    <script>
+        // --- Mode Switch ---
+        const tabs = document.querySelectorAll('.tab');
+        let currentMode = "settings";
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentMode = tab.dataset.mode;
+
+                document.querySelectorAll('[data-section]').forEach(sec => {
+                    sec.style.display = (sec.dataset.section === currentMode) ? 'block' : 'none';
+                });
+            });
+        });
+    </script>
+
+{% endblock %}

@@ -4,11 +4,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf_token" content="{{ csrf_token }}">
     <title>{% block title %}{% endblock %} | SDWebUI by Philipp Schott</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="Philipp Schott">
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+    <script src="{% static 'js/utils.js' %}"></script>
 
     {% block head %}{% endblock %}
 </head>
@@ -23,9 +26,22 @@
             {% block topbar_right %}
             	<a href="{% url 'create_index' %}"><button class="icon-btn" aria-label="Bild Erstellen">Bild Erstellen</button></a>
             {% endblock %}
+
+            {% if user.is_authenticated %}
+            	{% if user.is_superuser %}
+            		<a href="{% url 'admin_index' %}"><button class="icon-btn" aria-label="Admin">Admin</button></a>
+            	{% endif %}
+            	<a href="{% url 'auth_logout' %}"><button class="icon-btn" aria-label="Abmelden">Abmelden</button></a>
+            {% else %}
+                <a href="{% url 'auth_login' %}"><button class="icon-btn" aria-label="Anmelden">Anmelden</button></a>
+                <a href="{% url 'auth_register' %}"><button class="icon-btn" aria-label="Registrieren">Registrieren</button></a>
+            {% endif %}
+
         </div>
     </header>
 
-    {% block body %}{% endblock %}
+    <div id="content-wrapper">
+        {% block body %}{% endblock %}
+    </div>
 </body>
 </html>

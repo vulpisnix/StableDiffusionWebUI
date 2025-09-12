@@ -16,9 +16,10 @@ Gallery
     <div class="images">
         {% for image in images %}
         	<div class="card">
-                <img src="data:image/png;base64,{{ image.base64}}" alt="" loading="lazy" />
+                <img src="{{ image.image.url }}" alt="" />
                 <div class="meta">
-                    <span>{{ image.model }} @ {{ image.width }}x{{ image.height }}</span>
+                    <span>{{ image.get_metadata.model }}</span>
+                    <span>by {{ image.creator.username }}</span>
                 </div>
             </div>
         {% endfor %}

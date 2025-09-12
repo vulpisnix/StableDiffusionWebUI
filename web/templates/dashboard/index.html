@@ -1,0 +1,74 @@
+{% extends 'dashboard/__base.html' %}
+{% load static %}
+
+
+{% block admin_body %}
+
+    <div class="card settings" data-section="settings">
+        <h3>Einstellungen</h3>
+        <hr/>
+
+        <div class="col">
+            <div class="row">
+                <span>
+                    Benutzer können sich registrieren
+                </span>
+
+                <label class="switch" data-switch="allow_register">
+                    <input type="checkbox">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+
+    </div>
+    <div class="card users" data-section="users" style="display:none">
+        <div class="row">
+            <h3>Benutzer</h3>
+            <button>Benutzer erstellen</button>
+        </div>
+        <hr/>
+    </div>
+    <div class="card logs" data-section="logs" style="display:none">
+        <h3>Logs</h3>
+        <hr/>
+    </div>
+
+
+    <script>
+        const settingsSliders = document.querySelectorAll('.card.settings .switch');
+        settingsSliders.forEach(s => {
+            s.addEventListener('change', (e) => {
+                sendSettingsUpdate();
+            });
+        })
+        const collectSliders = () => {
+            let payload = {};
+            settingsSliders.forEach(s => {
+                const key = s.dataset.switch;
+                payload[key] = s.getElementsByTagName('input')[0].checked;
+            });
+            return payload;
+        }
+        const sendSettingsUpdate = () => {
+            const payload = collectSliders();
+            const f = async () => {
+                await sendPost('{% url 'admin_settings_api' %}', payload);
+            };
+            f();
+        }
+        const updateSettingsSliders = () => {
+            const f = async () => {
+                let response = await sendGet('{% url 'admin_settings_api' %}');
+                const data = response.json;
+                settingsSliders.forEach(s => {
+                    const key = s.dataset.switch;
+                    s.getElementsByTagName('input')[0].checked = data[key] === 'true';
+                });
+            };
+            f();
+        }
+        updateSettingsSliders();
+    </script>
+
+{% endblock %}

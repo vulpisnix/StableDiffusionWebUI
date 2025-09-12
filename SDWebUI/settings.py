@@ -92,3 +92,10 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/login'
+
+if not os.path.exists(os.path.join(MEDIA_ROOT, 'sd_images')):
+    os.makedirs(os.path.join(MEDIA_ROOT, 'sd_images'))

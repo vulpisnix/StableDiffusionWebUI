@@ -9,9 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/create.css' %}">
 {% endblock %}
 
-{% block topbar_right %}
-    <button class="icon-btn" id="exportBtn" aria-label="Einstellungen exportieren">Export</button>
-{% endblock %}
+{% block topbar_right %}{% endblock %}
 
 {% block body %}
 
@@ -65,7 +63,7 @@
                                 <label class="label" for="model">Modell</label>
                                 <select id="model" class="select" data-section-element="model">
                                     {% for model in models %}
-                                        <option value="{{ model.id }}">{{ model.name }}</option>
+                                        <option value="{{ model.hgf_name }}">{{ model.display_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

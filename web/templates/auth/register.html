@@ -1,0 +1,22 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}
+	Anmelden
+{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}" />
+{% endblock %}
+
+{% block body %}
+    <div class="background">
+    <div class="shape"></div>
+    <div class="shape"></div>
+  </div>
+    <form method="POST">
+    {% csrf_token %}
+    {{ form }}
+    <button type="submit">Registrieren</button>
+    </form>
+{% endblock %}

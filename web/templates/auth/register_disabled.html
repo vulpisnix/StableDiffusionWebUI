@@ -1,0 +1,26 @@
+{% extends '_base.html' %}
+{% load static %}
+
+{% block title %}
+    Anmelden
+{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/auth.css' %}"/>
+{% endblock %}
+
+{% block body %}
+    <div class="background">
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+    <form method="POST">
+        <center>
+            <b>Registrieren ist deaktiviert.</b>
+        </center>
+        <br/>
+        <center>
+            <span>Sprich mit einem zuständigen Admin</span>
+        </center>
+    </form>
+{% endblock %}

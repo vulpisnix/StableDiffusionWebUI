@@ -1,0 +1,28 @@
+[
+  {
+    "model": "web.sdmodel",
+    "pk": 1,
+    "fields": {
+      "display_name": "anything-v5",
+      "hgf_name": "stablediffusionapi/anything-v5",
+      "enabled": 1
+    }
+  },
+  {
+    "model": "web.sdmodel",
+    "pk": 2,
+    "fields": {
+      "display_name": "Qwen-Image",
+      "hgf_name": "Qwen/Qwen-Image",
+      "enabled": 1
+    }
+  },
+  {
+    "model": "web.settings",
+    "pk": 1,
+    "fields": {
+      "name": "allow_register",
+      "value": "false"
+    }
+  }
+]

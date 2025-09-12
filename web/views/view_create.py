@@ -1,6 +1,9 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.urls import path
 from django.views import View
+
+from web.models import SDModel
 
 
 class ViewCreate(View):
@@ -8,19 +11,10 @@ class ViewCreate(View):
 
     def get(self, request):
         return render(request, self.template_name, context={
-            'models': [
-                {
-                    'id': 'stablediffusionapi/anything-v5',
-                    'name': 'anything-v5'
-                },
-                {
-                    'id': 'Qwen/Qwen-Image',
-                    'name': 'Qwen-Image'
-                }
-            ]
+            'models': SDModel.objects.filter(enabled=True).reverse(),
         })
 
 
 urlpatterns = [
-    path('', ViewCreate.as_view(), name='create_index'),
+    path('', login_required(ViewCreate.as_view()), name='create_index'),
 ]
