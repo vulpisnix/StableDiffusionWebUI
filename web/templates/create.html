@@ -254,7 +254,7 @@
                 </section>
 
 
-                <!-- RIGHT: Output -->
+                <!-- CENTER: Output -->
                 <section class="card">
                     <div class="card-header">
                         <div>
@@ -270,6 +270,33 @@
                         <div id="gallery" class="gallery" aria-live="polite"></div>
                         <div class="footer">
                             <strong>Made with ♥️ by Philipp Schott</strong>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- RIGHT: Preview -->
+                <section class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Preview & Queue</div>
+                            <div class="card-sub">Prozess & Aufgaben</div>
+                        </div>
+                        <div class="toolbar">
+                            <button class="icon-btn" id="skip">Skip</button>
+                            <button class="icon-btn" id="stop">Interrupt</button>
+                        </div>
+                    </div>
+                    <div class="card-body row">
+                        <div id="queue" class="queue" aria-live="polite">
+                            <div id="generation-preview" class="thumb">
+                                <span>Preview</span>
+                                <img src="{% static 'images/cs.png' %}" alt="Generiertes Bild" loading="lazy"/>
+                            </div>
+                            <br/>
+                            <hr/>
+                            <br/>
+                            <div id="generation-queue"></div>
                         </div>
                     </div>
                 </section>
@@ -309,6 +336,25 @@
     </script>
 
     <script>
+        const sd_events = {
+            'queue': [],
+            'creation-finished': [],
+            'progress': [],
+            'progress-upscaler': []
+        }
+        const registerEvent = (event, callback) => {
+            if (event in sd_events) {
+                sd_events[event].push(callback)
+            }
+        }
+        const dispatchEvent = (event, data) => {
+            if (event in sd_events) {
+                for (const e of sd_events[event]) {
+                    e(data);
+                }
+            }
+        }
+
         let socketConnected = false;
         let socket = undefined;
         const createWebSocket = () => {
@@ -322,49 +368,7 @@
                 const event = payload.event;
                 const data = payload.data;
 
-                if (event === "creation-finished") {
-                    document.getElementById('generation-preview').remove();
-                    addToGallery(data);
-
-                    for (let i = 0; i < generateBtns.length; i++) {
-                        generateBtns[i].disabled = false;
-                        generateBtns[i].textContent = '⚡ Generieren';
-                    }
-                    for (let i = 0; i < progressLabels.length; i++) {
-                        progressLabels[i].innerText = "";
-                    }
-                } else if (event === "progress") {
-                    const steps = data["steps"];
-                    const step = data["step"];
-                    const pct = data["percent"];
-
-                    updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]}`);
-
-                    previewGenerationState(data["img_state"]);
-
-                    if (!isCurrentlyGenerating()) {
-                        for (let i = 0; i < generateBtns.length; i++) {
-                            generateBtns[i].disabled = true;
-                            generateBtns[i].textContent = '⏳ Generiere...';
-                        }
-                    }
-                } else if (event === "progress-upscaler") {
-                    const steps = data["steps"];
-                    const step = data["step"];
-                    const pct = data["percent"];
-                    updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]} - Upscaling`);
-
-                    previewGenerationState(data["img_state"]);
-
-                    if (!isCurrentlyGenerating()) {
-                        for (let i = 0; i < generateBtns.length; i++) {
-                            generateBtns[i].disabled = true;
-                            generateBtns[i].textContent = '⏳ Generiere...';
-                        }
-                    }
-                } else {
-                    console.log(event)
-                }
+                dispatchEvent(event, data);
             }
             socket.onclose = () => {
                 socketConnected = false;
@@ -384,6 +388,78 @@
             return true;
         }
         createWebSocket();
+
+        const event_Queue = (data) => {
+            const wrapper = document.getElementById("generation-queue");
+            wrapper.innerHTML = "";
+
+            const addElement = (index, queue_data) => {
+                const e = document.createElement("div");
+                e.classList.add('queue-item');
+
+                e.innerHTML = `
+                    <span>#${index+1} (${queue_data.method})</span>
+                    <span>by ${queue_data.user}</span>
+                `;
+
+                wrapper.append(e);
+            }
+
+            for (let q of data) {
+                addElement(data.indexOf(q), q);
+            }
+        }
+
+        const event_CreationFinished = (data) => {
+            addToGallery(data);
+            for (let i = 0; i < generateBtns.length; i++) {
+                generateBtns[i].disabled = false;
+                generateBtns[i].textContent = '⚡ Generieren';
+            }
+            for (let i = 0; i < progressLabels.length; i++) {
+                progressLabels[i].innerText = "";
+            }
+            toggleGenerateBtns(false);
+        }
+
+        const event_Progress = (data) => {
+            const steps = data["steps"];
+            const step = data["step"];
+            const pct = data["percent"];
+
+            updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]}`);
+
+            previewGenerationState(data["img_state"]);
+
+            if (!isCurrentlyGenerating()) {
+                for (let i = 0; i < generateBtns.length; i++) {
+                    generateBtns[i].disabled = true;
+                    generateBtns[i].textContent = '⏳ Generiere...';
+                }
+            }
+        }
+
+        const event_ProgressUpscaler = (data) => {
+            const steps = data["steps"];
+            const step = data["step"];
+            const pct = data["percent"];
+            updateProgressBar(steps, step, pct, ` (${step} / ${steps}) ETA: ${data["eta"]} - Upscaling`);
+
+            previewGenerationState(data["img_state"]);
+
+            if (!isCurrentlyGenerating()) {
+                for (let i = 0; i < generateBtns.length; i++) {
+                    generateBtns[i].disabled = true;
+                    generateBtns[i].textContent = '⏳ Generiere...';
+                }
+            }
+        }
+
+        registerEvent('queue', event_Queue);
+        registerEvent('creation-finished', event_CreationFinished);
+        registerEvent('progress', event_Progress);
+        registerEvent('progress-upscaler', event_ProgressUpscaler);
+
     </script>
 
     <script>
@@ -470,8 +546,9 @@
         const toast = document.getElementById('toast');
 
         let toastTimeout = undefined;
+
         function showToast(msg, timeout = 2200) {
-            if(toastTimeout) clearTimeout(toastTimeout);
+            if (toastTimeout) clearTimeout(toastTimeout);
             toast.textContent = msg;
             toast.style.display = 'block';
             toastTimeout = setTimeout(() => {
@@ -528,17 +605,16 @@
                 progressLabels[i].innerText = text;
             }
         }
-
         const isCurrentlyGenerating = () => {
             for (let i = 0; i < generateBtns.length; i++) {
-                if(generateBtns[i].disabled) return true;
+                if (generateBtns[i].disabled) return true;
             }
             return false;
         }
 
         async function generate() {
             let payload = await collectPayload();
-            if(payload === null) {
+            if (payload === null) {
                 showToast("Bitte füge ein Bild hinzu")
                 return;
             }
@@ -563,12 +639,19 @@
                     generateBtns[i].textContent = '⚡ Generieren';
                 }
             }
-            if(isGenerating && sent) showToast('Zur Warteschlange hinzugefügt');
+            if (isGenerating && sent) showToast('Zur Warteschlange hinzugefügt');
+            toggleGenerateBtns(true);
+        }
+
+        const toggleGenerateBtns = (hidden = true) => {
+            for (let i = 0; i < generateBtns.length; i++) {
+                generateBtns[i].style.display = hidden ? "none" : "unset";
+            }
         }
 
         // --- Gallery ---
         const gallery = document.getElementById('gallery');
-
+        const queue = document.getElementById('queue');
         const addToGallery = (base64Image) => {
             const imageSrc = 'data:image/png;base64,' + base64Image;
 
@@ -585,23 +668,11 @@
                 </div>`;
             gallery.prepend(el);
         }
-
         const previewGenerationState = (base64Image) => {
             const imageSrc = 'data:image/png;base64,' + base64Image;
 
             let el = document.getElementById('generation-preview');
-            if (el === null) {
-                el = document.createElement('div');
-                el.id = 'generation-preview';
-                el.className = 'thumb';
-                el.innerHTML = `
-                    <img src="${imageSrc}" alt="Generiertes Bild" loading="lazy"/>
-                `;
-            } else {
-                el.getElementsByTagName('img')[0].src = imageSrc;
-            }
-            if (!gallery.contains(el)) gallery.prepend(el);
-
+            el.getElementsByTagName('img')[0].src = imageSrc;
         }
 
         document.getElementById('clearGallery').addEventListener('click', () => {

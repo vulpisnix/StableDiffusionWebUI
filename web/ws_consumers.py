@@ -9,6 +9,12 @@ class WSConsumer_Create(JsonWebsocketConsumer):
         self.accept()
         WS_Create.append(self)
 
+        from web.sd_queue_thread import queue_to_payload
+        self.send_json({
+            'event': 'queue',
+            'data': queue_to_payload()
+        })
+
     def disconnect(self, code):
         WS_Create.remove(self)
 
@@ -28,3 +34,10 @@ class WSConsumer_Create(JsonWebsocketConsumer):
             qData.save()
             sd_queue_thread.queue.put(qData)
             sd_queue_thread.run()
+
+            from web.sd_queue_thread import queue_to_payload
+            for ws in WS_Create:
+                ws.send_json({
+                    'event': 'queue',
+                    'data': queue_to_payload()
+                })

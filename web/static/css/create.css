@@ -6,8 +6,9 @@ a {
 /* Layout */
 .grid {
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 360px 1fr 360px;
     gap: 16px;
+    transition: all .125s ease;
 }
 
 @media (max-width: 980px) {
@@ -163,9 +164,12 @@ a {
 
 /* Gallery */
 .gallery {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
     gap: 12px;
+    height: 800px;
+    overflow-y: auto;
 }
 
 @media (min-width: 920px) {
@@ -180,11 +184,21 @@ a {
     border-radius: 12px;
     border: 1px solid var(--border);
     background: #0f1318;
+
+    width: 320px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+}
+
+.gallery .thumb {
+    width: calc((100% / 3) - 16px);
 }
 
 .thumb img {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: cover;
     display: block;
 }
@@ -200,6 +214,14 @@ a {
     display: flex;
     justify-content: space-between;
     gap: 8px;
+}
+
+.thumb span {
+    user-select: none;
+    position: absolute;
+    margin-left: 16px;
+    margin-top: 10px;
+    text-shadow: 0 0 5px 5px black;
 }
 
 /* Upload */
@@ -290,4 +312,17 @@ a {
 
 .hidden {
     display: none !important;
+}
+
+
+
+#generation-queue {
+    width: 100%;
+    height: fit-content;
+}
+
+#generation-queue .queue-item {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
 }

@@ -9,7 +9,7 @@ from diffusers import (
     UniPCMultistepScheduler,
     StableDiffusionUpscalePipeline
 )
-from django.utils import timezone
+from django.utils import timezone, dateformat
 
 from SDWebUI.settings import BASE_DIR, MEDIA_ROOT
 from web.models import SDImageQueue, SDImage, SDModel
@@ -51,12 +51,29 @@ def fetch_queue_from_db():
         sdQueueThread.do_run = True
         sdQueueThread.start()
 
+
+def queue_to_payload():
+    payload = []
+    qu = SDImageQueue.objects.all().order_by('created_at')
+    for q in qu:
+        formatted_date = dateformat.format(q.created_at, 'Y-m-d H:i:s')
+        payload.append({
+            'id': q.id,
+            'created_at': formatted_date,
+            'user': q.user.username,
+            'method': q.action_type
+        })
+    payload.reverse()
+    return payload
+
+
 def run():
     global sdQueueThread
     if sdQueueThread is None:
         sdQueueThread = SDQueueThread()
         sdQueueThread.do_run = True
         sdQueueThread.start()
+
 
 class SDQueueThread(threading.Thread):
     def __init__(self):
@@ -97,9 +114,12 @@ class SDQueueThread(threading.Thread):
             '''
         return False
 
-    def txt2img(self, settings, progress_callback):
-        self.current_pipe = pipe = DiffusionPipeline.from_pretrained(settings["model"], torch_dtype=self.torch_dtype,
-                                                                     cache_dir=os.path.join(BASE_DIR, 'sd_model_cache'))
+    def txt2img(self, settings, progress_callback, file_name=None):
+        self.current_pipe = pipe = DiffusionPipeline.from_pretrained(
+            settings["model"],
+            torch_dtype=self.torch_dtype,
+            cache_dir=os.path.join(BASE_DIR, 'sd_model_cache')
+        )
         pipe = pipe.to(self.device)
         # if settings['allow_nsfw']: pipe.safety_checker = None
         pipe.safety_checker = None
@@ -135,15 +155,22 @@ class SDQueueThread(threading.Thread):
         image = result.images[0]
         if self.check_nsfw(result): return None
 
-        file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+        if file_name is None:
+            file_name = os.path.join(MEDIA_ROOT, "sd_images",
+                                     datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
         image.save(file_name, format="PNG")
         return file_name
 
-    def img2img(self, settings, image):
-        pass
+    def img2img(self, settings, image, file_name=None):
+        if file_name is None:
+            file_name = os.path.join(MEDIA_ROOT, "sd_images",
+                                     datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+        return file_name
 
-    def upscale(self, upscaler_name, image, prompt, negative_prompt, progress_callback_upscaler):
-        file_name = os.path.join(MEDIA_ROOT, "sd_images", datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+    def upscale(self, upscaler_name, image, prompt, negative_prompt, progress_callback_upscaler, file_name=None):
+        if file_name is None:
+            file_name = os.path.join(MEDIA_ROOT, "sd_images",
+                                     datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
 
         match upscaler_name:
             case "4x-UltraSharp":
@@ -168,7 +195,6 @@ class SDQueueThread(threading.Thread):
         return file_name
 
     def add_meta(self, image_path, meta):
-        print(f"Meta: {meta}")
         targetImage = Image.open(image_path)
         metadata = PngInfo()
         metadata.add_text("SD_Data", json.dumps(meta))
@@ -196,7 +222,12 @@ class SDQueueThread(threading.Thread):
                 'event': 'creation-finished',
                 'data': b64encode(buffer.getvalue()).decode(),
             }
-            for socket in WS_Create: socket.send_json(socket_payload)
+            for socket in WS_Create:
+                socket.send_json(socket_payload)
+                socket.send_json({
+                    'event': 'queue',
+                    'data': queue_to_payload()
+                })
         except Exception as e:
             print(e)
 
@@ -309,13 +340,13 @@ class SDQueueThread(threading.Thread):
                 if event_type == 'txt2img':
                     result_path = self.txt2img(settings, progress_callback=self.progress_callback)
                     image_to_upscale = Image.open(result_path)
-                    result_path = self.upscale(settings["upscaler"], image_to_upscale, '', '', progress_callback_upscaler=self.progress_callback_upscaler)
-
+                    result_path = self.upscale(settings["upscaler"], image_to_upscale, '', '',
+                                               progress_callback_upscaler=self.progress_callback_upscaler,
+                                               file_name=result_path)
                 if result_path is None: continue
 
                 settings = data.settings['settings']
                 self.add_meta(result_path, settings)
-                self.broadcast_result(result_path)
 
                 file_name = result_path.split('\\')[-1]
                 model = SDModel.objects.filter(hgf_name=settings['model']).first()
@@ -325,6 +356,8 @@ class SDQueueThread(threading.Thread):
                     image=f"sd_images/{file_name}",
                 ).save()
                 data.delete()
+
+                self.broadcast_result(result_path)
 
                 '''
                 start_time = time.time()
