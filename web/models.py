@@ -67,3 +67,29 @@ class SDImage(models.Model):
 
     def __str__(self):
         return f"Model: {self.model.display_name} | Creator: {self.creator.username}"
+
+class SDImageQueue(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    action_type = models.CharField(max_length=100, choices=[('txt2img', 'Text 2 Image'), ('img2img', 'Image 2 Image'), ('upscale', 'Upscale Image')], default='txt2img')
+    settings = models.JSONField()
+    is_processing = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = 'Image Queue'
+        verbose_name = 'Image Queue'
+        ordering = ['created_at']
+
+    def as_json(self):
+        payload = {
+            'event_type': self.action_type,
+            'settings': self.settings['settings'],
+        }
+        if 'img' in self.settings:
+            payload['img'] = self.settings['img']
+
+        return payload
+
+    def __str__(self):
+        return f"User: {self.user.username} | Action Type: {self.action_type}"
