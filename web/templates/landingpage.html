@@ -2,28 +2,211 @@
 {% load static %}
 
 {% block title %}
-Gallery
+    Gallery
 {% endblock %}
 
 {% block head %}
-	<link rel="stylesheet" href="{% static 'css/landingpage.css' %}">
+    <link rel="stylesheet" href="{% static 'css/landingpage.css' %}">
 {% endblock %}
 
 {% block body %}
-	<h1>Stable Diffusion WebUI</h1>
+    <h1>Stable Diffusion WebUI</h1>
     <h3>by Philipp Schott</h3>
 
-    <div class="images">
+
+    <div class="gallery" id="gallery">
         {% for image in images %}
-        	<div class="card">
-                <img src="{{ image.image.url }}" alt="" />
-                <div class="meta">
-                    <span>{{ image.get_metadata.model }}</span>
+            <div class="thumb" tabindex="0" data-index="0">
+                <img loading="lazy" alt="Mountains" src="{{ image.image.url }}">
+                <div class="caption">
                     <span>by {{ image.creator.username }}</span>
+                    <span> x {{ image.get_metadata.model }}</span>
                 </div>
             </div>
         {% endfor %}
 
     </div>
 
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+        <div class="panel" role="dialog" aria-modal="true" aria-label="Image viewer">
+            <div class="viewer" id="viewer">
+                <div class="nav left" id="prevBtn" title="Previous (Left Arrow)">
+                    <button class="arrow btn" aria-label="Previous">◀</button>
+                </div>
+
+                <img id="lbImage" src="" alt="">
+
+                <div class="nav right" id="nextBtn" title="Next (Right Arrow)">
+                    <button class="arrow btn" aria-label="Next">▶</button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div>
+                    <div class="meta" id="metaTitle">Title</div>
+                    <div class="meta" id="metaSize">Size</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                    <button class="btn" id="zoomBtn" title="Zoom">🔍 Zoom</button>
+                    <button class="btn" id="resetBtn" title="Reset zoom & position">↺ Reset</button>
+                    <button class="btn" id="downloadBtn" title="Download image">⬇ Download</button>
+                    <button class="btn" id="closeBtn" title="Close (Esc)">✕ Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+      const gallery = document.getElementById('gallery');
+      const thumbs = Array.from(gallery.querySelectorAll('.thumb'));
+      const lightbox = document.getElementById('lightbox');
+      const lbImage = document.getElementById('lbImage');
+      const metaTitle = document.getElementById('metaTitle');
+      const metaSize = document.getElementById('metaSize');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const zoomBtn = document.getElementById('zoomBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const viewer = document.getElementById('viewer');
+
+      let currentIndex = 0;
+      let zoomLevel = 1;
+      let offsetX = 0;
+      let offsetY = 0;
+      let startX = 0, endX = 0;
+
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      function applyTransform(){
+        lbImage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoomLevel})`;
+      }
+
+      function resetView(){
+        zoomLevel = 1;
+        offsetX = 0;
+        offsetY = 0;
+        applyTransform();
+      }
+
+      function show(index){
+        const thumb = thumbs[index];
+        const img = thumb.querySelector('img');
+        lbImage.src = img.src;
+        lbImage.alt = img.alt || '';
+        metaTitle.textContent = thumb.querySelector('.caption')?.textContent || img.alt || ('Image ' + (index+1));
+        metaSize.textContent = 'Natural: ' + (img.naturalWidth||'?') + ' × ' + (img.naturalHeight||'?');
+        currentIndex = index;
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden','false');
+        resetView();
+        requestAnimationFrame(()=> closeBtn.focus());
+      }
+
+      function close(){
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden','true');
+        lbImage.src = '';
+      }
+
+      function prev(){ show((currentIndex - 1 + thumbs.length) % thumbs.length); }
+      function next(){ show((currentIndex + 1) % thumbs.length); }
+
+      thumbs.forEach((t,i)=>{
+        t.addEventListener('click', ()=> show(i));
+        t.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(i);} });
+      });
+
+      prevBtn.addEventListener('click', prev);
+      nextBtn.addEventListener('click', next);
+      closeBtn.addEventListener('click', close);
+      resetBtn.addEventListener('click', resetView);
+
+      lightbox.addEventListener('click', (e)=>{ if(e.target === lightbox) close(); });
+
+      window.addEventListener('keydown', (e)=>{
+        if(lightbox.classList.contains('open')){
+          if(e.key === 'Escape') close();
+          else if(e.key === 'ArrowLeft') prev();
+          else if(e.key === 'ArrowRight') next();
+        }
+      });
+
+      function setZoom(level, cx, cy){
+        const prevZoom = zoomLevel;
+        zoomLevel = Math.max(0.2, Math.min(level, 5));
+        const rect = lbImage.getBoundingClientRect();
+        const dx = (cx - rect.left) - rect.width / 2;
+        const dy = (cy - rect.top) - rect.height / 2;
+        offsetX -= dx * (zoomLevel/prevZoom - 1);
+        offsetY -= dy * (zoomLevel/prevZoom - 1);
+        applyTransform();
+      }
+
+      zoomBtn.addEventListener('click', ()=>{
+        setZoom(zoomLevel === 1 ? 1.8 : 1, window.innerWidth/2, window.innerHeight/2);
+      });
+
+      lbImage.addEventListener('wheel', (e)=>{
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        setZoom(zoomLevel + delta, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // Drag to pan
+      viewer.addEventListener('mousedown', (e)=>{
+        isDragging = true;
+        viewer.classList.add('dragging');
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragOffsetX = offsetX;
+        dragOffsetY = offsetY;
+      });
+
+      window.addEventListener('mousemove', (e)=>{
+        if(!isDragging) return;
+        offsetX = dragOffsetX + (e.clientX - dragStartX);
+        offsetY = dragOffsetY + (e.clientY - dragStartY);
+        applyTransform();
+      });
+
+      window.addEventListener('mouseup', ()=>{
+        isDragging = false;
+        viewer.classList.remove('dragging');
+      });
+
+      downloadBtn.addEventListener('click', ()=>{
+        const a = document.createElement('a');
+        a.href = lbImage.src;
+        a.download = lbImage.alt || ('image-' + (currentIndex+1));
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+
+      viewer.addEventListener('touchstart', (e)=>{ startX = e.changedTouches[0].clientX; });
+      viewer.addEventListener('touchend', (e)=>{ endX = e.changedTouches[0].clientX; handleSwipe(); });
+      function handleSwipe(){
+        const dx = endX - startX;
+        if(Math.abs(dx) > 40){ if(dx > 0) prev(); else next(); }
+      }
+
+      lbImage.ondragstart = ()=> false;
+
+      thumbs.forEach(t=>{ const s = t.querySelector('img').src; const i=new Image(); i.src=s; });
+
+      document.addEventListener('focus', function(e){
+        if(lightbox.classList.contains('open') && !lightbox.contains(e.target)){
+          e.stopPropagation(); closeBtn.focus();
+        }
+      }, true);
+
+    })();
+  </script>
 {% endblock %}

@@ -21,6 +21,7 @@ class SDModel(models.Model):
     display_name = models.CharField(max_length=30)
     hgf_name = models.CharField(max_length=100)
     enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['enabled', 'display_name']
@@ -66,7 +67,7 @@ class SDImage(models.Model):
         verbose_name = 'Image'
 
     def __str__(self):
-        return f"Model: {self.model.display_name} | Creator: {self.creator.username}"
+        return f"Model: {self.model.display_name} | Creator: {self.creator.username} | Image: {self.image.name}"
 
 class SDImageQueue(models.Model):
     id = models.AutoField(primary_key=True)

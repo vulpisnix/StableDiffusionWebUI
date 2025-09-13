@@ -211,16 +211,21 @@ class SDQueueThread(threading.Thread):
             case "UniPC":
                 pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
 
-    def broadcast_result(self, image_path):
-        image = Image.open(image_path)
-        buffer = BytesIO()
-        image.save(buffer, format="PNG")
-        buffer.seek(0)
-
+    def broadcast_result(self, sd_obj, model):
         try:
+            meta = self.data.settings
+            meta['settings']['model'] = {
+                'display_name': model.display_name,
+                'hgf_name': model.hgf_name
+            }
+
             socket_payload = {
                 'event': 'creation-finished',
-                'data': b64encode(buffer.getvalue()).decode(),
+                'data': {
+                    'id': sd_obj.id,
+                    'img': sd_obj.image.url,
+                    'meta': meta,
+                },
             }
             for socket in WS_Create:
                 socket.send_json(socket_payload)
@@ -350,14 +355,15 @@ class SDQueueThread(threading.Thread):
 
                 file_name = result_path.split('\\')[-1]
                 model = SDModel.objects.filter(hgf_name=settings['model']).first()
-                SDImage.objects.create(
+                sd = SDImage.objects.create(
                     model=model,
                     creator=data.user,
                     image=f"sd_images/{file_name}",
-                ).save()
+                )
+                sd.save()
                 data.delete()
 
-                self.broadcast_result(result_path)
+                self.broadcast_result(sd, model)
 
                 '''
                 start_time = time.time()

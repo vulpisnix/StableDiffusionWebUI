@@ -74,8 +74,6 @@ aber **Änderungen, Weiterverbreitung oder Forks sind nur mit meiner ausdrückli
 
 ## 📝 ToDo
 - Screenshots für README hinzufügen
-- Benutzersystem
-- Queue-System erweitern (Prioritäten, Pausieren, Abbrechen)
 - RESTful API
 - Dokumentation erstellen
 - Performance-Optimierungen für große Modelle

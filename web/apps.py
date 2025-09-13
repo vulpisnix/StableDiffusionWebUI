@@ -1,3 +1,5 @@
+import sys
+
 from django.apps import AppConfig
 
 class WebConfig(AppConfig):
@@ -5,4 +7,5 @@ class WebConfig(AppConfig):
     name = 'web'
 
     def ready(self):
-        import web.signals #noqa
+        if any(cmd in sys.argv for cmd in ['runserver', 'gunicorn', 'daphne']):
+            import web.signals #noqa

@@ -5,7 +5,9 @@
 {% block admin_body %}
 
     <div class="card settings" data-section="settings">
-        <h3>Einstellungen</h3>
+        <div class="row nohover">
+            <h3>Einstellungen</h3>
+        </div>
         <hr/>
 
         <div class="col">
@@ -22,15 +24,58 @@
         </div>
 
     </div>
+    <div class="card models" data-section="models" style="display:none">
+        <div class="row nohover">
+            <h3>Modelle</h3>
+            <button>Modell hinzufügen</button>
+        </div>
+        <hr/>
+        <br/>
+
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Modell Name</th>
+                <th>Anzeigename</th>
+                <th style="width: 200px">Hinzugefügt am</th>
+                <th style="width: 200px">Aktionen</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for model in models %}
+                <tr>
+                    <td>{{ model.hgf_name }}</td>
+                    <td>{{ model.display_name }}</td>
+                    <td>{{ model.created_at }}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn toggle">
+                                {% if model.enabled %}
+                                    👁 Deaktivieren
+                                {% else %}
+                                    👁 Aktivieren
+                                {% endif %}
+                                </button>
+                            <button class="btn delete">🗑 Löschen</button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
     <div class="card users" data-section="users" style="display:none">
-        <div class="row">
+        <div class="row nohover">
             <h3>Benutzer</h3>
             <button>Benutzer erstellen</button>
         </div>
         <hr/>
     </div>
     <div class="card logs" data-section="logs" style="display:none">
-        <h3>Logs</h3>
+        <div class="row nohover">
+            <h3>Logs</h3>
+        </div>
         <hr/>
     </div>
 

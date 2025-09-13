@@ -9,6 +9,7 @@
     left: 50%;
     transform: translateX(-50%);
 }
+
 .card h3 {
     margin: 0;
 }
@@ -18,12 +19,95 @@
     flex-direction: column;
     gap: 10px;
 }
+
 .card .row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     font-size: 16px;
 }
+
 .card .row:not(.nohover):hover {
     color: yellow;
+}
+
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    table-layout: fixed; /* sorgt dafür, dass colgroup wirkt */
+}
+
+.table thead {
+    background: var(--accent2);
+    color: white;
+}
+
+.table th, .table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.table th:nth-child(1),
+.table td:nth-child(1),
+.table th:nth-child(2),
+.table td:nth-child(2),
+.table th:nth-child(3),
+.table td:nth-child(3) {
+    text-align: left;
+}
+
+.table tbody tr:nth-child(even) {
+    background: var(--panel-2);
+}
+
+.table tbody tr:hover {
+    background: var(--hover-bg);
+    transition: 0.2s;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn {
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.toggle {
+    background: var(--border-color);
+    color: var(--muted);
+}
+
+.toggle:hover {
+    background: var(--primary-2);
+    color: white;
+}
+
+.toggle.active {
+    background: var(--success);
+    color: white;
+}
+
+.delete {
+    background: var(--danger);
+    color: white;
+}
+
+.delete:hover {
+    background: #b91c1c;
 }

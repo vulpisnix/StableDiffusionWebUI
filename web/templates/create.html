@@ -55,7 +55,7 @@
                             <textarea id="neg" class="textarea"
                                       placeholder="z.B. lowres, blurry, extra limbs, watermark"
                                       spellcheck="false"
-                                      data-section-element="neg"></textarea>
+                                      data-section-element="neg">lowres, blurry, extra limbs</textarea>
                         </div>
 
                         <div class="grid-2">
@@ -560,7 +560,7 @@
         // --- Buttons ---
         document.getElementById('resetBtn').addEventListener('click', () => {
             document.getElementById('prompt').value = '';
-            document.getElementById('neg').value = '';
+            document.getElementById('neg').value = 'lowres, blurry, extra limbs';
             document.getElementById('steps').value = 30;
             document.getElementById('cfg').value = 7;
             ['steps', 'cfg'].forEach(attachRange);
@@ -652,18 +652,19 @@
         // --- Gallery ---
         const gallery = document.getElementById('gallery');
         const queue = document.getElementById('queue');
-        const addToGallery = (base64Image) => {
-            const imageSrc = 'data:image/png;base64,' + base64Image;
+        const addToGallery = (data) => {
+            const imageSrc = data['img'];
+            const downloadUrl = '{% url 'download_single' image=123456789 %}'.replace("123456789", data['id']);
 
             const el = document.createElement('div');
             el.className = 'thumb';
             el.innerHTML = `
                 <img src="${imageSrc}" alt="Generiertes Bild" loading="lazy"/>
                 <div class="meta">
-                <span>${document.getElementById('model').value.toUpperCase()}</span>
+                <span>${data['meta']['settings']['model']['display_name']}</span>
                 <div class="toolbar">
                     <button class="pill" title="Als Prompt übernehmen">📋</button>
-                    <button class="pill" title="Download">⬇️</button>
+                    <a href="${downloadUrl}"><button class="pill" title="Download">⬇️</button></a>
                 </div>
                 </div>`;
             gallery.prepend(el);
@@ -677,7 +678,7 @@
 
         document.getElementById('clearGallery').addEventListener('click', () => {
             gallery.innerHTML = '';
-            showToast('Gallery cleared!');
+            showToast('Gallerie geleert!');
         });
         document.getElementById('saveAll').addEventListener('click', () => showToast('Bitte im Backend implementieren: ZIP-Export'));
 

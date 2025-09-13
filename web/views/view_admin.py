@@ -4,14 +4,16 @@ from django.urls import path
 from django.views import View
 
 from web.decorators import admin_required
-from web.models import Settings
+from web.models import Settings, SDModel
 
 
 class ViewIndex(View):
     template_name = 'dashboard/index.html'
 
     def get(self, request):
-        return render(request, self.template_name)
+        return render(request, self.template_name, context={
+            'models': SDModel.objects.all().reverse(),
+        })
 
 
 class ViewUpdate_Settings(View):
