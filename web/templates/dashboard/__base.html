@@ -27,12 +27,25 @@
     <script>
         // --- Mode Switch ---
         const tabs = document.querySelectorAll('.tab');
-        let currentMode = "settings";
+        let currentMode = document.location.hash.substring(1);
+
+        document.querySelectorAll('[data-section]').forEach(sec => {
+            if (sec.dataset.section === currentMode) {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabs.forEach(t => {
+                    if(t.dataset.mode === currentMode) t.classList.add('active');
+                });
+                document.querySelectorAll('[data-section]').forEach(sec => {
+                    sec.style.display = (sec.dataset.section === currentMode) ? 'block' : 'none';
+                });
+            }
+        });
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 currentMode = tab.dataset.mode;
+                document.location.hash = tab.dataset.mode;
 
                 document.querySelectorAll('[data-section]').forEach(sec => {
                     sec.style.display = (sec.dataset.section === currentMode) ? 'block' : 'none';

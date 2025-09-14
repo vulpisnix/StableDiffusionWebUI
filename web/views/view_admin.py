@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import path
 from django.views import View
@@ -14,6 +14,16 @@ class ViewIndex(View):
         return render(request, self.template_name, context={
             'models': SDModel.objects.all().reverse(),
         })
+
+class ViewModelsDelete(View):
+    def post(self, request, *args, **kwargs):
+        modelId = kwargs.get('model')
+        model = SDModel.objects.filter(id=modelId)
+        if model.exists():
+            model = model.first()
+            model.delete()
+            return JsonResponse({})
+        return HttpResponse(status=404, content='not found')
 
 
 class ViewUpdate_Settings(View):
@@ -39,5 +49,8 @@ class ViewUpdate_Settings(View):
 
 urlpatterns = [
     path('', admin_required(ViewIndex.as_view()), name='admin_index'),
+    path('models/delete/<int:model>/', admin_required(ViewModelsDelete.as_view()), name='admin_models_delete_api'),
+
+
     path('settings/', admin_required(ViewUpdate_Settings.as_view()), name='admin_settings_api'),
 ]

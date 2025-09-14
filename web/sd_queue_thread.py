@@ -343,6 +343,10 @@ class SDQueueThread(threading.Thread):
                                                progress_callback_upscaler=self.progress_callback_upscaler)
 
                 if event_type == 'txt2img':
+                    model_raw = settings['model']
+                    model_exists = SDModel.objects.filter(hgf_name=model_raw).exists()
+                    if not model_exists: continue
+
                     result_path = self.txt2img(settings, progress_callback=self.progress_callback)
                     image_to_upscale = Image.open(result_path)
                     result_path = self.upscale(settings["upscaler"], image_to_upscale, '', '',

@@ -49,14 +49,14 @@
                     <td>{{ model.created_at }}</td>
                     <td>
                         <div class="actions">
-                            <button class="btn toggle">
+                            <button class="btn toggle" data-modelId="{{ model.id }}">
                                 {% if model.enabled %}
                                     👁 Deaktivieren
                                 {% else %}
                                     👁 Aktivieren
                                 {% endif %}
                                 </button>
-                            <button class="btn delete">🗑 Löschen</button>
+                            <button class="btn delete" data-modelId="{{ model.id }}">🗑 Löschen</button>
                         </div>
                     </td>
                 </tr>
@@ -114,6 +114,25 @@
             f();
         }
         updateSettingsSliders();
+    </script>
+
+    <script>
+    const modelDeleteBtns = document.querySelectorAll('.models .delete');
+    modelDeleteBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            const f = async () => {
+                const url = '{% url 'admin_models_delete_api' model=123456789 %}'.replace("123456789", btn.dataset.modelid);
+                let response = await sendPost(url, {});
+                if(response.ok) {
+                    document.location = '#models';
+                    document.location.reload();
+                }
+            };
+            f();
+        })
+    })
     </script>
 
 {% endblock %}
