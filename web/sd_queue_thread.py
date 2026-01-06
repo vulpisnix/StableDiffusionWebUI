@@ -92,6 +92,20 @@ class SDQueueThread(threading.Thread):
         else:
             self.torch_dtype = torch.float32
             self.device = "cpu"
+        '''else:
+            try:
+                # AMD exposes accelerator via DirectML
+                import torch_directml
+                self.torch_dtype = torch.float16
+                self.device = torch_directml.device()
+                print("AMD NPU/DirectML activated.")
+            except Exception:
+                self.torch_dtype = torch.float32
+                self.device = "cpu"
+                print("DirectML not available → CPU fallback.")
+        '''
+
+        print(f"Torch Device: {self.device}")
 
     def check_nsfw(self, pipeline):
         nsfw_flag = False
@@ -178,7 +192,7 @@ class SDQueueThread(threading.Thread):
                     "stabilityai/stable-diffusion-x4-upscaler",
                     torch_dtype=self.torch_dtype,
                     cache_dir=os.path.join(BASE_DIR, 'sd_model_cache')
-                ).to("cuda")
+                ).to(self.device)
 
                 self.start_time = time.time()
                 upscaled_result = upscaler(

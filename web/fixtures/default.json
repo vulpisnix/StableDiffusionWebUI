@@ -5,7 +5,8 @@
     "fields": {
       "display_name": "anything-v5",
       "hgf_name": "stablediffusionapi/anything-v5",
-      "enabled": 1
+      "enabled": 1,
+      "created_at": "2026-01-01 00:00:00"
     }
   },
   {
@@ -14,7 +15,8 @@
     "fields": {
       "display_name": "Qwen-Image",
       "hgf_name": "Qwen/Qwen-Image",
-      "enabled": 1
+      "enabled": 1,
+      "created_at": "2026-01-01 00:00:00"
     }
   },
   {
